@@ -10,10 +10,14 @@ function build {
     docker build -f .make/source.Dockerfile --tag user-svc/source:latest .
 }
 
-function test-integration {
-    docker-compose -f .make/test-integration.yaml up --abort-on-container-exit
-
-    docker-compose -f .make/test-integration.yaml down
+function cleanup-test-integration {
+    docker-compose -f .make/test-integration.yaml down --remove-orphans
 
     docker-compose -f .make/test-integration.yaml rm -f -v
+}
+
+function test-integration {
+    docker-compose -f .make/test-integration.yaml up --abort-on-container-exit || cleanup-test-integration
+
+    cleanup-test-integration
 }
