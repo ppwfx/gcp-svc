@@ -1,0 +1,8 @@
+version: "3.8"
+services:
+  user-svc:
+    image: user-svc/user-svc:latest
+    command: ["./user-svc", "--addr", "0.0.0.0:80"]
+  source:
+    image: user-svc/source:latest
+    command: ["go", "test", "-v", "pkg/test/integration_test.go", "--user-svc-addr", "user-svc:80"]
