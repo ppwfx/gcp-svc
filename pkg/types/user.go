@@ -10,6 +10,14 @@ type CreateUserResponse struct {
 	Error string `json:"error"`
 }
 
+type DeleteUserRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+type DeleteUserResponse struct {
+	Error string `json:"error"`
+}
+
 type ListUsersRequest struct {
 }
 
