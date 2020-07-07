@@ -4,19 +4,46 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"github.com/jmoiron/sqlx"
+	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
-var integrationTestArgs = types.IntegrationTestArgs{}
+var args = types.IntegrationTestArgs{}
+var db *sqlx.DB
 
 func TestMain(m *testing.M) {
-	flag.StringVar(&integrationTestArgs.UserSvcAddr, "user-svc-addr", "", "")
-
+	flag.StringVar(&args.UserSvcAddr, "user-svc-addr", "", "")
+	flag.StringVar(&args.DbConnection, "db-connection", "", "")
 	flag.Parse()
+
+	err := func() (err error) {
+		err = persistence.WaitForDb(args.DbConnection)
+		if err != nil {
+			return
+		}
+
+		db, err = persistence.GetDb(25, 25, 5*time.Minute, args.DbConnection)
+		if err != nil {
+			return
+		}
+
+		err = persistence.Migrate(db)
+		if err != nil {
+			return
+		}
+
+		return
+	}()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	c := m.Run()
 
@@ -39,7 +66,7 @@ func TestCreateUser(t *testing.T) {
 			return
 		}
 
-		resp, err := http.Post("http://"+integrationTestArgs.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
 		if err != nil {
 			return
 		}
@@ -50,7 +77,17 @@ func TestCreateUser(t *testing.T) {
 			return
 		}
 
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
 		assert.Empty(t, rsp.Error)
+
+		u, err := persistence.GetUserByEmail(db, req.Email)
+		if err != nil {
+			return
+		}
+
+		assert.Equal(t, req.Email, u.Email)
+		assert.Equal(t, req.Password, u.Password)
+		assert.Equal(t, req.FullName, u.FullName)
 
 		return
 	}()
