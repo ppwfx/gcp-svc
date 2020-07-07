@@ -50,6 +50,15 @@ func InsertUser(db *sqlx.DB, u types.UserModel) (err error) {
 	return
 }
 
+func SelectUsersOrderByIdDesc(db *sqlx.DB) (us []types.UserModel, err error) {
+	err = db.Select(&us, "SELECT id, email, fullname FROM users ORDER BY id DESC")
+	if err != nil {
+		return
+	}
+
+	return
+}
+
 func GetUserByEmail(db *sqlx.DB, e string) (u types.UserModel, err error) {
 	err = db.Get(&u, "SELECT id, email, fullname, password FROM users WHERE email=$1", e)
 	if err != nil {
