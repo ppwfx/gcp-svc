@@ -54,40 +54,108 @@ func TestCreateUser(t *testing.T) {
 	t.Parallel()
 
 	err := func() (err error) {
-		createReq := types.CreateUserRequest{
-			Email:    "johndoe@example.com",
-			Password: "password",
-			FullName: "johndoe",
+		tcs := []struct {
+			createReq          types.CreateUserRequest
+			expectError        bool
+			expectedStatusCode int
+		}{
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testCreateUser@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				expectError:        false,
+				expectedStatusCode: 200,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testCreateUser@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "johndoe",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testCreateUser@example.com",
+					Password: "",
+					FullName: "johndoe",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testCreateUser@example.com",
+					Password: "password",
+					FullName: "",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
 		}
 
-		var b bytes.Buffer
-		err = json.NewEncoder(&b).Encode(createReq)
-		if err != nil {
-			return
+		for _, tc := range tcs {
+			createReq := tc.createReq
+
+			var b bytes.Buffer
+			err = json.NewEncoder(&b).Encode(createReq)
+			if err != nil {
+				return
+			}
+
+			var resp *http.Response
+			resp, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			var createRsp types.CreateUserResponse
+			err = json.NewDecoder(resp.Body).Decode(&createRsp)
+			if err != nil {
+				return
+			}
+
+			assert.Equal(t, tc.expectedStatusCode, resp.StatusCode)
+
+			if tc.expectError {
+				assert.NotEmpty(t, createRsp.Error)
+			} else {
+				assert.Empty(t, createRsp.Error)
+			}
+
+			if !tc.expectError {
+				var u types.UserModel
+				u, err = persistence.GetUserByEmail(db, createReq.Email)
+				if err != nil {
+					return
+				}
+
+				assert.Equal(t, createReq.Email, u.Email)
+				assert.NotEqual(t, createReq.Password, u.Password)
+				assert.Equal(t, createReq.FullName, u.FullName)
+			}
 		}
-
-		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
-		if err != nil {
-			return
-		}
-
-		var createRsp types.CreateUserResponse
-		err = json.NewDecoder(resp.Body).Decode(&createRsp)
-		if err != nil {
-			return
-		}
-
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-		assert.Empty(t, createRsp.Error)
-
-		u, err := persistence.GetUserByEmail(db, createReq.Email)
-		if err != nil {
-			return
-		}
-
-		assert.Equal(t, createReq.Email, u.Email)
-		assert.NotEqual(t, createReq.Password, u.Password)
-		assert.Equal(t, createReq.FullName, u.FullName)
 
 		return
 	}()
@@ -100,47 +168,105 @@ func TestAuthenticate(t *testing.T) {
 	t.Parallel()
 
 	err := func() (err error) {
-		createReq := types.CreateUserRequest{
-			Email:    "johndoe1@example.com",
-			Password: "password",
-			FullName: "johndoe",
+		tcs := []struct {
+			createReq          types.CreateUserRequest
+			authReq            types.AuthenticateRequest
+			expectError        bool
+			expectedStatusCode int
+		}{
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testAuthenticate0@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testAuthenticate0@example.com",
+					Password: "password",
+				},
+				expectError:        false,
+				expectedStatusCode: 200,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testAuthenticate1@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testAuthenticate1@example.com",
+					Password: "",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testAuthenticate2@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testAuthenticate2@example.com",
+					Password: "password2",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "",
+					Password: "",
+					FullName: "",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testAuthenticate3@example.com",
+					Password: "password2",
+				},
+				expectError:        true,
+				expectedStatusCode: 422,
+			},
 		}
 
-		var b bytes.Buffer
-		err = json.NewEncoder(&b).Encode(createReq)
-		if err != nil {
-			return
-		}
+		for _, tc := range tcs {
+			var b bytes.Buffer
+			err = json.NewEncoder(&b).Encode(tc.createReq)
+			if err != nil {
+				return
+			}
 
-		_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
-		if err != nil {
-			return
-		}
+			_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
 
-		authReq := types.AuthenticateRequest{
-			Email:    "johndoe1@example.com",
-			Password: "password",
-		}
+			err = json.NewEncoder(&b).Encode(tc.authReq)
+			if err != nil {
+				return
+			}
 
-		err = json.NewEncoder(&b).Encode(authReq)
-		if err != nil {
-			return
-		}
+			var resp *http.Response
+			resp, err = http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
 
-		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
-		if err != nil {
-			return
-		}
+			var authRsp types.AuthenticateResponse
+			err = json.NewDecoder(resp.Body).Decode(&authRsp)
+			if err != nil {
+				return
+			}
 
-		var authRsp types.AuthenticateResponse
-		err = json.NewDecoder(resp.Body).Decode(&authRsp)
-		if err != nil {
-			return
-		}
+			assert.Equal(t, tc.expectedStatusCode, resp.StatusCode)
 
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Empty(t, authRsp.Error)
-		assert.NotEmpty(t, authRsp.AccessToken)
+			if tc.expectError {
+				assert.NotEmpty(t, authRsp.Error)
+				assert.Empty(t, authRsp.AccessToken)
+			} else {
+				assert.Empty(t, authRsp.Error)
+				assert.NotEmpty(t, authRsp.AccessToken)
+			}
+		}
 
 		return
 	}()
@@ -153,72 +279,105 @@ func TestListUsers(t *testing.T) {
 	t.Parallel()
 
 	err := func() (err error) {
-		createReq := types.CreateUserRequest{
-			Email:    "johndoe2@test.com",
-			Password: "password",
-			FullName: "johndoe",
+		tcs := []struct {
+			createReq          types.CreateUserRequest
+			authReq            types.AuthenticateRequest
+			expectError        bool
+			expectedStatusCode int
+		}{
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testListUsers0@test.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testListUsers0@test.com",
+					Password: "password",
+				},
+				expectError:        false,
+				expectedStatusCode: 200,
+			},
+			{
+				createReq: types.CreateUserRequest{
+					Email:    "testListUsers1@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testListUsers1@example.com",
+					Password: "password",
+				},
+				expectError:        true,
+				expectedStatusCode: 401,
+			},
 		}
 
-		var b bytes.Buffer
-		err = json.NewEncoder(&b).Encode(createReq)
-		if err != nil {
-			return
+		for _, tc := range tcs {
+			var b bytes.Buffer
+			err = json.NewEncoder(&b).Encode(tc.createReq)
+			if err != nil {
+				return
+			}
+
+			_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			err = json.NewEncoder(&b).Encode(tc.authReq)
+			if err != nil {
+				return
+			}
+
+			var resp *http.Response
+			resp, err = http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			var authRsp types.AuthenticateResponse
+			err = json.NewDecoder(resp.Body).Decode(&authRsp)
+			if err != nil {
+				return
+			}
+
+			listReq := types.ListUsersRequest{}
+
+			err = json.NewEncoder(&b).Encode(listReq)
+			if err != nil {
+				return
+			}
+
+			var req *http.Request
+			req, err = http.NewRequest(http.MethodPost, "http://"+args.UserSvcAddr+types.RouteListUsers, &b)
+			if err != nil {
+				return
+			}
+			req.Header.Set(types.HeaderContentType, types.ContentTypeJson)
+			req.Header.Set(types.HeaderAuthorization, types.PrefixBearer+authRsp.AccessToken)
+
+			resp, err = http.DefaultClient.Do(req)
+			if err != nil {
+				return
+			}
+
+			var listRsp types.ListUsersResponse
+			err = json.NewDecoder(resp.Body).Decode(&listRsp)
+			if err != nil {
+				return
+			}
+
+			assert.Equal(t, tc.expectedStatusCode, resp.StatusCode)
+
+			if tc.expectError {
+				assert.NotEmpty(t, listRsp.Error)
+				assert.Len(t, listRsp.Users, 0)
+			} else {
+				assert.Empty(t, listRsp.Error)
+				assert.NotEmpty(t, listRsp.Users)
+			}
 		}
-
-		_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
-		if err != nil {
-			return
-		}
-
-		authReq := types.AuthenticateRequest{
-			Email:    createReq.Email,
-			Password: createReq.Password,
-		}
-
-		err = json.NewEncoder(&b).Encode(authReq)
-		if err != nil {
-			return
-		}
-
-		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
-		if err != nil {
-			return
-		}
-
-		var authRsp types.AuthenticateResponse
-		err = json.NewDecoder(resp.Body).Decode(&authRsp)
-		if err != nil {
-			return
-		}
-
-		listReq := types.ListUsersRequest{}
-
-		err = json.NewEncoder(&b).Encode(listReq)
-		if err != nil {
-			return
-		}
-
-		requ, err := http.NewRequest(http.MethodPost, "http://"+args.UserSvcAddr+types.RouteListUsers, &b)
-		if err != nil {
-			return
-		}
-		requ.Header.Set(types.HeaderContentType, types.ContentTypeJson)
-		requ.Header.Set(types.HeaderAuthorization, types.PrefixBearer+authRsp.AccessToken)
-
-		resp, err = http.DefaultClient.Do(requ)
-		if err != nil {
-			return
-		}
-
-		var listRsp types.ListUsersResponse
-		err = json.NewDecoder(resp.Body).Decode(&listRsp)
-		if err != nil {
-			return
-		}
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Empty(t, listRsp.Error)
-		assert.NotEmpty(t, listRsp.Users)
 
 		return
 	}()
