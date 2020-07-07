@@ -16,6 +16,8 @@ var integrationTestArgs = types.IntegrationTestArgs{}
 func TestMain(m *testing.M) {
 	flag.StringVar(&integrationTestArgs.UserSvcAddr, "user-svc-addr", "", "")
 
+	flag.Parse()
+
 	c := m.Run()
 
 	os.Exit(c)
@@ -37,13 +39,13 @@ func TestCreateUser(t *testing.T) {
 			return
 		}
 
-		resp, err := http.Post(integrationTestArgs.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, b)
+		resp, err := http.Post("http://"+integrationTestArgs.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
 		if err != nil {
 			return
 		}
 
 		var rsp types.CreateUserResponse
-		err = json.NewDecoder(resp.Body).Decode(rsp)
+		err = json.NewDecoder(resp.Body).Decode(&rsp)
 		if err != nil {
 			return
 		}

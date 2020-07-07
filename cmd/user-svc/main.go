@@ -12,6 +12,8 @@ var serveArgs = types.ServeArgs{}
 func main() {
 	flag.StringVar(&serveArgs.Addr, "addr", "", "")
 
+	flag.Parse()
+
 	err := communication.Serve(serveArgs.Addr)
 	if err != nil {
 		log.Fatal(err)
