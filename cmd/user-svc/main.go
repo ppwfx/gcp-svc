@@ -17,6 +17,7 @@ func main() {
 	flag.StringVar(&args.DbConnection, "db-connection", "", "")
 	flag.StringVar(&args.HmacSecret, "hmac-secret", "", "")
 	flag.StringVar(&args.Salt, "salt", "", "")
+	flag.StringVar(&args.AllowedSubjectSuffix, "allowed-subject-suffix", "", "")
 	flag.Parse()
 
 	v := validator.New()
@@ -32,7 +33,7 @@ func main() {
 			return
 		}
 
-		err = communication.Serve(v, db, args.Addr, args.HmacSecret, args.Salt)
+		err = communication.Serve(v, db, args.Addr, args.HmacSecret, args.Salt, args.AllowedSubjectSuffix)
 		if err != nil {
 			return
 		}
