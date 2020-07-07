@@ -86,8 +86,61 @@ func TestCreateUser(t *testing.T) {
 		}
 
 		assert.Equal(t, req.Email, u.Email)
-		assert.Equal(t, req.Password, u.Password)
+		assert.NotEqual(t, req.Password, u.Password)
 		assert.Equal(t, req.FullName, u.FullName)
+
+		return
+	}()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestAuthenticate(t *testing.T) {
+	t.Parallel()
+
+	err := func() (err error) {
+		createReq := types.CreateUserRequest{
+			Email:    "johndoe1@example.com",
+			Password: "password",
+			FullName: "johndoe",
+		}
+
+		var b bytes.Buffer
+		err = json.NewEncoder(&b).Encode(createReq)
+		if err != nil {
+			return
+		}
+
+		_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+		if err != nil {
+			return
+		}
+
+		authReq := types.AuthenticateRequest{
+			Email:    "johndoe1@example.com",
+			Password: "password",
+		}
+
+		err = json.NewEncoder(&b).Encode(authReq)
+		if err != nil {
+			return
+		}
+
+		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
+		if err != nil {
+			return
+		}
+
+		var rsp types.AuthenticateResponse
+		err = json.NewDecoder(resp.Body).Decode(&rsp)
+		if err != nil {
+			return
+		}
+
+		assert.Equal(t, resp.StatusCode, http.StatusOK)
+		assert.Empty(t, rsp.Error)
+		assert.NotEmpty(t, rsp.AccessToken)
 
 		return
 	}()
