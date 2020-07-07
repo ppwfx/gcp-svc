@@ -385,3 +385,132 @@ func TestListUsers(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestDeleteUser(t *testing.T) {
+	t.Parallel()
+
+	err := func() (err error) {
+		tcs := []struct {
+			firstCreateReq     types.CreateUserRequest
+			secondCreateReq    types.CreateUserRequest
+			authReq            types.AuthenticateRequest
+			deleteReq          types.DeleteUserRequest
+			expectError        bool
+			expectedStatusCode int
+		}{
+			{
+				firstCreateReq: types.CreateUserRequest{
+					Email:    "testDeleteUser0@test.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				secondCreateReq: types.CreateUserRequest{
+					Email:    "testDeleteUser0@example.com",
+					Password: "password",
+					FullName: "johndoe",
+				},
+				authReq: types.AuthenticateRequest{
+					Email:    "testDeleteUser0@test.com",
+					Password: "password",
+				},
+				deleteReq: types.DeleteUserRequest{
+					Email: "testDeleteUser0@example.com",
+				},
+				expectError:        false,
+				expectedStatusCode: 200,
+			},
+		}
+
+		for _, tc := range tcs {
+			var b bytes.Buffer
+			err = json.NewEncoder(&b).Encode(tc.firstCreateReq)
+			if err != nil {
+				return
+			}
+
+			_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			err = json.NewEncoder(&b).Encode(tc.secondCreateReq)
+			if err != nil {
+				return
+			}
+
+			_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			err = json.NewEncoder(&b).Encode(tc.authReq)
+			if err != nil {
+				return
+			}
+
+			var resp *http.Response
+			resp, err = http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
+			if err != nil {
+				return
+			}
+
+			var authRsp types.AuthenticateResponse
+			err = json.NewDecoder(resp.Body).Decode(&authRsp)
+			if err != nil {
+				return
+			}
+
+			err = json.NewEncoder(&b).Encode(tc.deleteReq)
+			if err != nil {
+				return
+			}
+
+			var req *http.Request
+			req, err = http.NewRequest(http.MethodPost, "http://"+args.UserSvcAddr+types.RouteDeleteUser, &b)
+			if err != nil {
+				return
+			}
+			req.Header.Set(types.HeaderContentType, types.ContentTypeJson)
+			req.Header.Set(types.HeaderAuthorization, types.PrefixBearer+authRsp.AccessToken)
+
+			resp, err = http.DefaultClient.Do(req)
+			if err != nil {
+				return
+			}
+
+			var deleteRsp types.DeleteUserResponse
+			err = json.NewDecoder(resp.Body).Decode(&deleteRsp)
+			if err != nil {
+				return
+			}
+
+			assert.Equal(t, tc.expectedStatusCode, resp.StatusCode)
+
+			var u types.UserModel
+			if tc.expectError {
+				assert.NotEmpty(t, deleteRsp.Error)
+
+				u, err = persistence.GetUserByEmail(db, tc.deleteReq.Email)
+				if err != nil {
+					return
+				}
+
+				assert.Equal(t, tc.deleteReq.Email, u.Email)
+			} else {
+				assert.Empty(t, deleteRsp.Error)
+
+				u, err = persistence.GetUserByEmail(db, tc.deleteReq.Email)
+
+				assert.Error(t, err)
+				err = nil
+
+				assert.Equal(t, "", u.Email)
+			}
+		}
+
+		return
+	}()
+	if err != nil {
+		t.Error(err)
+	}
+}
