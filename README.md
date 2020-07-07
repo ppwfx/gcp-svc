@@ -1,5 +1,33 @@
 # user-svc
 
+### dependencies
+
+To build the service, and run the integration, the following dependencies are required:
+
+    - go
+    - docker
+    - docker-compose
+
+```bash
+$ go version
+go version go1.13.3 darwin/amd64
+
+$ docker version
+Client: Docker Engine - Community
+ Version:           19.03.8
+Server: Docker Engine - Community
+ Engine:
+  Version:          19.03.8
+
+$ docker-compose version
+docker-compose version 1.25.5
+```
+
+### usage
+
+- use `make build` to build the service for linux, a container containing the service, and a container containing the source code for testing
+- use `make build && make test-integration` to build the test dependencies, and execute the integration test
+
 ## specification
 
 ### commands
