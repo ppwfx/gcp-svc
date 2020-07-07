@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 )
 
 func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, salt string, allowedSubjectSuffix string) (err error) {
@@ -129,6 +130,85 @@ func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, s
 				Email:    u.Email,
 				FullName: u.FullName,
 			})
+		}
+
+		return
+	})
+
+	m.HandleFunc(types.RouteDeleteUser, func(w http.ResponseWriter, r *http.Request) {
+		rsp := types.DeleteUserResponse{}
+		statusCode := http.StatusOK
+
+		defer func() {
+			w.WriteHeader(statusCode)
+
+			err := json.NewEncoder(w).Encode(&rsp)
+			if err != nil {
+				log.Println(err)
+
+				return
+			}
+		}()
+
+		accessToken := business.ExtractAccessToken(r)
+		if accessToken == "" {
+			rsp.Error = types.ErrorUnauthorized
+			statusCode = http.StatusUnauthorized
+
+			return
+		}
+
+		is, err := business.IsAuthorized(hmacSecret, accessToken, allowedSubjectSuffix)
+		if err != nil {
+			log.Println(err)
+
+			statusCode = http.StatusUnprocessableEntity
+
+			return
+		}
+		if !is {
+			rsp.Error = types.ErrorUnauthorized
+			statusCode = http.StatusUnauthorized
+
+			return
+		}
+
+		var req types.DeleteUserRequest
+		err = json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			statusCode = http.StatusBadRequest
+
+			return
+		}
+
+		err = v.Struct(&req)
+		if err != nil {
+			rsp.Error = err.Error()
+			statusCode = http.StatusUnprocessableEntity
+
+			return
+		}
+
+		if strings.HasSuffix(req.Email, allowedSubjectSuffix) {
+			rsp.Error = types.ErrorCanNotDeleteInternalUser
+			statusCode = http.StatusUnprocessableEntity
+
+		}
+
+		_, err = persistence.GetUserByEmail(db, req.Email)
+		if err != nil {
+			rsp.Error = types.ErrorUserDoesNotExist
+			statusCode = http.StatusUnprocessableEntity
+
+			return
+		}
+
+		err = persistence.DeleteUserByEmail(db, req.Email)
+		if err != nil {
+			rsp.Error = types.ErrorInternalError
+			statusCode = http.StatusInternalServerError
+
+			return
 		}
 
 		return
