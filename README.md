@@ -8,6 +8,8 @@ To build the service, and run the integration, the following dependencies are re
     - docker
     - docker-compose
 
+The service has been tested in the following environment:
+
 ```bash
 $ go version
 go version go1.13.3 darwin/amd64
