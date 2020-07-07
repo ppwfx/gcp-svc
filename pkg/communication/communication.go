@@ -2,7 +2,7 @@ package communication
 
 import (
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
 	"github.com/ppwfx/user-svc/pkg/business"
@@ -11,10 +11,9 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"time"
 )
 
-func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, salt string) (err error) {
+func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, salt string, allowedSubjectSuffix string) (err error) {
 	m := http.NewServeMux()
 
 	m.HandleFunc(types.RouteCreateUser, func(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +57,81 @@ func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, s
 			statusCode = http.StatusUnprocessableEntity
 
 			return
+		}
+
+		return
+	})
+
+	m.HandleFunc(types.RouteListUsers, func(w http.ResponseWriter, r *http.Request) {
+		rsp := types.ListUsersResponse{}
+		statusCode := http.StatusOK
+
+		defer func() {
+			w.WriteHeader(statusCode)
+
+			err := json.NewEncoder(w).Encode(&rsp)
+			if err != nil {
+				log.Println(err)
+
+				return
+			}
+		}()
+
+		spew.Dump(r.Header)
+
+		accessToken := business.ExtractAccessToken(r)
+		if accessToken == "" {
+			rsp.Error = types.ErrorUnauthorized
+			statusCode = http.StatusUnauthorized
+
+			return
+		}
+
+		is, err := business.IsAuthorized(hmacSecret, accessToken, allowedSubjectSuffix)
+		if err != nil {
+			log.Println(err)
+
+			statusCode = http.StatusUnprocessableEntity
+
+			return
+		}
+		if !is {
+			rsp.Error = types.ErrorUnauthorized
+			statusCode = http.StatusUnauthorized
+
+			return
+		}
+
+		var req types.ListUsersRequest
+		err = json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			statusCode = http.StatusBadRequest
+
+			return
+		}
+
+		err = v.Struct(&req)
+		if err != nil {
+			rsp.Error = err.Error()
+			statusCode = http.StatusUnprocessableEntity
+
+			return
+		}
+
+		us, err := persistence.SelectUsersOrderByIdDesc(db)
+		if err != nil {
+			rsp.Error = types.ErrorInternalError
+			statusCode = http.StatusInternalServerError
+
+			return
+		}
+
+		for _, u := range us {
+			rsp.Users = append(rsp.Users, types.ListUser{
+				Id:       u.Id,
+				Email:    u.Email,
+				FullName: u.FullName,
+			})
 		}
 
 		return
@@ -109,12 +183,7 @@ func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, s
 			return
 		}
 
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
-			Subject:   u.Email,
-		})
-
-		tokenString, err := token.SignedString([]byte(hmacSecret))
+		accessToken, err := business.GenerateAccessToken(hmacSecret, u.Email)
 		if err != nil {
 			log.Println(err)
 
@@ -124,7 +193,7 @@ func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, s
 			return
 		}
 
-		rsp.AccessToken = tokenString
+		rsp.AccessToken = accessToken
 
 		return
 	})
