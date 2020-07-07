@@ -10,6 +10,20 @@ type CreateUserResponse struct {
 	Error string `json:"error"`
 }
 
+type ListUsersRequest struct {
+}
+
+type ListUsersResponse struct {
+	Error string     `json:"error"`
+	Users []ListUser `json:"users"`
+}
+
+type ListUser struct {
+	Id       int    `json:"id"`
+	Email    string `json:"email"`
+	FullName string `json:"fullname"`
+}
+
 type AuthenticateRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
