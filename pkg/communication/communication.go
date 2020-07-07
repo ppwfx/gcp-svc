@@ -37,6 +37,8 @@ func Serve(addr string) (err error) {
 		return
 	}
 
+	log.Printf("listening on %v\n", addr)
+
 	err = http.Serve(l, m)
 	if err != nil {
 		return
