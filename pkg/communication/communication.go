@@ -2,7 +2,6 @@ package communication
 
 import (
 	"encoding/json"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
 	"github.com/ppwfx/user-svc/pkg/business"
@@ -76,8 +75,6 @@ func Serve(v *validator.Validate, db *sqlx.DB, addr string, hmacSecret string, s
 				return
 			}
 		}()
-
-		spew.Dump(r.Header)
 
 		accessToken := business.ExtractAccessToken(r)
 		if accessToken == "" {
