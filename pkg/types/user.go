@@ -7,7 +7,17 @@ type CreateUserRequest struct {
 }
 
 type CreateUserResponse struct {
-	Error string `json:"email"`
+	Error string `json:"error"`
+}
+
+type AuthenticateRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
+type AuthenticateResponse struct {
+	Error       string `json:"error"`
+	AccessToken string `json:"access_token"`
 }
 
 type UserModel struct {
