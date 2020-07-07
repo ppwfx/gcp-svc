@@ -15,6 +15,8 @@ var args = types.ServeArgs{}
 func main() {
 	flag.StringVar(&args.Addr, "addr", "", "")
 	flag.StringVar(&args.DbConnection, "db-connection", "", "")
+	flag.StringVar(&args.HmacSecret, "hmac-secret", "", "")
+	flag.StringVar(&args.Salt, "salt", "", "")
 	flag.Parse()
 
 	v := validator.New()
@@ -30,7 +32,7 @@ func main() {
 			return
 		}
 
-		err = communication.Serve(v, db, args.Addr)
+		err = communication.Serve(v, db, args.Addr, args.HmacSecret, args.Salt)
 		if err != nil {
 			return
 		}
