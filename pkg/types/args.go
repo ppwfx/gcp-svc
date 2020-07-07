@@ -6,8 +6,9 @@ type IntegrationTestArgs struct {
 }
 
 type ServeArgs struct {
-	DbConnection string
-	Addr         string
-	HmacSecret   string
-	Salt         string
+	DbConnection         string
+	Addr                 string
+	HmacSecret           string
+	Salt                 string
+	AllowedSubjectSuffix string
 }
