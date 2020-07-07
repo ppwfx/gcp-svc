@@ -1,9 +1,11 @@
 package types
 
 type IntegrationTestArgs struct {
-	UserSvcAddr string
+	DbConnection string
+	UserSvcAddr  string
 }
 
 type ServeArgs struct {
-	Addr string
+	DbConnection string
+	Addr         string
 }
