@@ -54,14 +54,14 @@ func TestCreateUser(t *testing.T) {
 	t.Parallel()
 
 	err := func() (err error) {
-		req := types.CreateUserRequest{
+		createReq := types.CreateUserRequest{
 			Email:    "johndoe@example.com",
 			Password: "password",
 			FullName: "johndoe",
 		}
 
 		var b bytes.Buffer
-		err = json.NewEncoder(&b).Encode(req)
+		err = json.NewEncoder(&b).Encode(createReq)
 		if err != nil {
 			return
 		}
@@ -71,23 +71,23 @@ func TestCreateUser(t *testing.T) {
 			return
 		}
 
-		var rsp types.CreateUserResponse
-		err = json.NewDecoder(resp.Body).Decode(&rsp)
+		var createRsp types.CreateUserResponse
+		err = json.NewDecoder(resp.Body).Decode(&createRsp)
 		if err != nil {
 			return
 		}
 
 		assert.Equal(t, resp.StatusCode, http.StatusOK)
-		assert.Empty(t, rsp.Error)
+		assert.Empty(t, createRsp.Error)
 
-		u, err := persistence.GetUserByEmail(db, req.Email)
+		u, err := persistence.GetUserByEmail(db, createReq.Email)
 		if err != nil {
 			return
 		}
 
-		assert.Equal(t, req.Email, u.Email)
-		assert.NotEqual(t, req.Password, u.Password)
-		assert.Equal(t, req.FullName, u.FullName)
+		assert.Equal(t, createReq.Email, u.Email)
+		assert.NotEqual(t, createReq.Password, u.Password)
+		assert.Equal(t, createReq.FullName, u.FullName)
 
 		return
 	}()
@@ -132,15 +132,93 @@ func TestAuthenticate(t *testing.T) {
 			return
 		}
 
-		var rsp types.AuthenticateResponse
-		err = json.NewDecoder(resp.Body).Decode(&rsp)
+		var authRsp types.AuthenticateResponse
+		err = json.NewDecoder(resp.Body).Decode(&authRsp)
 		if err != nil {
 			return
 		}
 
-		assert.Equal(t, resp.StatusCode, http.StatusOK)
-		assert.Empty(t, rsp.Error)
-		assert.NotEmpty(t, rsp.AccessToken)
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Empty(t, authRsp.Error)
+		assert.NotEmpty(t, authRsp.AccessToken)
+
+		return
+	}()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func TestListUsers(t *testing.T) {
+	t.Parallel()
+
+	err := func() (err error) {
+		createReq := types.CreateUserRequest{
+			Email:    "johndoe2@test.com",
+			Password: "password",
+			FullName: "johndoe",
+		}
+
+		var b bytes.Buffer
+		err = json.NewEncoder(&b).Encode(createReq)
+		if err != nil {
+			return
+		}
+
+		_, err = http.Post("http://"+args.UserSvcAddr+types.RouteCreateUser, types.ContentTypeJson, &b)
+		if err != nil {
+			return
+		}
+
+		authReq := types.AuthenticateRequest{
+			Email:    createReq.Email,
+			Password: createReq.Password,
+		}
+
+		err = json.NewEncoder(&b).Encode(authReq)
+		if err != nil {
+			return
+		}
+
+		resp, err := http.Post("http://"+args.UserSvcAddr+types.RouteAuthenticate, types.ContentTypeJson, &b)
+		if err != nil {
+			return
+		}
+
+		var authRsp types.AuthenticateResponse
+		err = json.NewDecoder(resp.Body).Decode(&authRsp)
+		if err != nil {
+			return
+		}
+
+		listReq := types.ListUsersRequest{}
+
+		err = json.NewEncoder(&b).Encode(listReq)
+		if err != nil {
+			return
+		}
+
+		requ, err := http.NewRequest(http.MethodPost, "http://"+args.UserSvcAddr+types.RouteListUsers, &b)
+		if err != nil {
+			return
+		}
+		requ.Header.Set(types.HeaderContentType, types.ContentTypeJson)
+		requ.Header.Set(types.HeaderAuthorization, types.PrefixBearer+authRsp.AccessToken)
+
+		resp, err = http.DefaultClient.Do(requ)
+		if err != nil {
+			return
+		}
+
+		var listRsp types.ListUsersResponse
+		err = json.NewDecoder(resp.Body).Decode(&listRsp)
+		if err != nil {
+			return
+		}
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Empty(t, listRsp.Error)
+		assert.NotEmpty(t, listRsp.Users)
 
 		return
 	}()
