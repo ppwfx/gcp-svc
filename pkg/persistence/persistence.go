@@ -67,3 +67,12 @@ func GetUserByEmail(db *sqlx.DB, e string) (u types.UserModel, err error) {
 
 	return
 }
+
+func DeleteUserByEmail(db *sqlx.DB, e string) (err error) {
+	_, err = db.Exec("DELETE FROM users WHERE email=$1", e)
+	if err != nil {
+		return
+	}
+
+	return
+}
