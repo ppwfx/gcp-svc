@@ -2,6 +2,6 @@
 
 set -eox pipefail
 
-function build {}
-
-function test-integration {}
+function build {
+    go build -o dist/user-svc cmd/user-svc/main.go
+}
