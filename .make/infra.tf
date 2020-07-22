@@ -2,20 +2,20 @@ terraform {
   backend "gcs" {
     bucket  = "tf-user-svc"
     prefix  = "terraform/state"
-    credentials = "creds.json"
+    credentials = "credentials.json"
   }
 }
 
 provider "google" {
   project     = "user-svc"
-  credentials = file("creds.json")
+  credentials = file("credentials.json")
   region      = "us-east1"
   zone        = "us-east1-a"
 }
 
 provider "google-beta" {
   project     = "user-svc"
-  credentials = file("creds.json")
+  credentials = file("credentials.json")
   region      = "us-east1"
   zone        = "us-east1-a"
 }
@@ -75,6 +75,7 @@ resource "google_cloud_run_service" "user-svc" {
     metadata {
       annotations = {
         "autoscaling.knative.dev/maxScale"      = "10"
+        "run.googleapis.com/client-name"        = "terraform"
         "run.googleapis.com/cloudsql-instances" = "user-svc:us-east1:${google_sql_database_instance.postgresql.name}"
       }
     }
