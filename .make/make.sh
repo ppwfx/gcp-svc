@@ -14,15 +14,3 @@ function lint {
     go fix ./...
     gosec ./...
 }
-
-function cleanup-test-integration {
-    docker-compose -f .make/test-integration.yaml down --remove-orphans
-
-    docker-compose -f .make/test-integration.yaml rm -f -v
-}
-
-function test-integration {
-    docker-compose -f .make/test-integration.yaml up --abort-on-container-exit || cleanup-test-integration
-
-    cleanup-test-integration
-}
