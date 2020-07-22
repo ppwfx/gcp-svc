@@ -9,5 +9,5 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: hashicorp/setup-terraform@v1
-      - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" > ./make/credentials.json
+      - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" > ./.make/credentials.json
       - run: make terraform-apply
