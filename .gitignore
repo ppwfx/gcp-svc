@@ -1,2 +1,7 @@
 .idea
 dist
+.make/infra.tfvars
+.make/creds.json
+.make/.terraform
+.make/terraform.tfstate
+.make/terraform.tfstate.backup
