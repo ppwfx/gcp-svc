@@ -1,5 +1,22 @@
 # user-svc
 
+### todo
+
+- stress test
+- observability
+    - tracing
+    - metrics
+- add ttl parameter to generate token
+- httptest
+- http server
+- test coverage
+- cors middleware
+- token invalidation
+- refresh token
+- migration
+- owasp
+- read secrets from files
+
 ### dependencies
 
 To build the service, and run the integration, the following dependencies are required:
