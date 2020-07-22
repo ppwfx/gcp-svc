@@ -14,5 +14,23 @@ const (
 	HeaderAuthorization           = "Authorization"
 	HeaderContentType             = "Content-Type"
 	PrefixBearer                  = "Bearer "
+	ClaimExp                      = "exp"
+	ClaimIat                      = "iat"
+	ClaimRole                     = "role"
 	ClaimSub                      = "sub"
+	RoleUser                      = "user"
+	RoleAdmin                     = "admin"
+	ContextKeyClaims              = "claims"
+	LogSub                        = "sub"
+	LogRole                       = "role"
+	LogTook                       = "took"
+	LogSec                        = "sec"
+	LogFunc                       = "func"
+	PkgPersistence                = "persistence"
+)
+
+var (
+	RoleGuestScopes = []string{RouteCreateUser, RouteAuthenticate}
+	RoleUserScopes  = []string{}
+	RoleAdminScopes = []string{RouteListUsers, RouteDeleteUser}
 )
