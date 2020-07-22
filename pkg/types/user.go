@@ -21,13 +21,17 @@ type DeleteUserResponse struct {
 type ListUsersRequest struct {
 }
 
+type ErrorResponse struct {
+	Error string `json:"error"`
+}
+
 type ListUsersResponse struct {
 	Error string     `json:"error"`
 	Users []ListUser `json:"users"`
 }
 
 type ListUser struct {
-	Id       int    `json:"id"`
+	ID       int    `json:"id"`
 	Email    string `json:"email"`
 	FullName string `json:"fullname"`
 }
@@ -43,8 +47,9 @@ type AuthenticateResponse struct {
 }
 
 type UserModel struct {
-	Id       int    `db:"id"`
+	ID       int    `db:"id"`
 	Email    string `db:"email"`
 	Password string `db:"password"`
 	FullName string `db:"fullname"`
+	Role     string `db:"role"`
 }
