@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -eox pipefail
+#set -eox pipefail
 
 function build {
     GOOS=linux GOARCH=amd64 go build -o dist/user-svc cmd/user-svc/main.go
@@ -13,4 +13,11 @@ function lint {
     go fmt ./...
     go fix ./...
     gosec ./...
+}
+
+function terraform-apply {
+    cd ./.make
+    terraform init
+    terraform plan
+    terraform apply -auto-approve
 }

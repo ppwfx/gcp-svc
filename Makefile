@@ -9,3 +9,6 @@ build:
 
 test-integration:
 	@${SOURCE_MAKE} && test-integration
+
+terraform-apply:
+	@${SOURCE_MAKE} && terraform-apply
