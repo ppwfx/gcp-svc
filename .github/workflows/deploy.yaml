@@ -15,6 +15,7 @@ jobs:
           echo "::add-path::${{ github.workspace }}/bin"
           echo "::add-path::$GOPATH/bin"
       - run: go get github.com/golang-migrate/migrate
+      - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" | base64 -d > ./.make/credentials.json
       - run: make migrate-database
       - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
