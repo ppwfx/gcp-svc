@@ -1,4 +1,4 @@
-variable "svc-version" {
+variable "user-svc-version" {
   type = string
   default = "skip"
 }
@@ -32,7 +32,7 @@ module "user-svc-postgres" {
 module "user-svc" {
   source = "./modules/user-svc"
 
-  svc-version = var.svc-version
+  user-svc-version = var.user-svc-version
   postgresql_instance_connection_name = module.user-svc-postgres.connection_name
   container_args = [
     "--addr",

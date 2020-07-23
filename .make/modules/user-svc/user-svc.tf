@@ -1,4 +1,4 @@
-variable "svc-version" {
+variable "user-svc-version" {
   type = string
 }
 
@@ -13,7 +13,6 @@ variable "container_args" {
 resource "google_cloud_run_service" "user-svc" {
   name     = "user-svc"
   location = "us-east1"
-  autogenerate_revision_name = true
 
   template {
     metadata {
@@ -26,9 +25,12 @@ resource "google_cloud_run_service" "user-svc" {
 
     spec {
       containers {
-        image = "gcr.io/user-svc/user-svc:${var.svc-version}"
+        image = "gcr.io/user-svc/user-svc:${var.user-svc-version}"
         command = ["./user-svc"]
         args = var.container_args
+      }
+      metadata {
+        name = "user-svc-${var.user-svc-version}"
       }
     }
   }

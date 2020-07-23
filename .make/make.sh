@@ -26,8 +26,8 @@ function migrate-database {
 function deploy {
     cd ./.make
     terraform init
-    terraform plan -target=module.user-svc -var svc-version=$TAG
-    terraform apply -target=module.user-svc -auto-approve -var svc-version=$TAG
+    terraform plan -target=module.user-svc -var user-svc-version=$TAG
+    terraform apply -target=module.user-svc -auto-approve -var user-svc-version=$TAG
 }
 
 function lint {
