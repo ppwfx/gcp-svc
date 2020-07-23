@@ -16,7 +16,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/communication/client"
-	"github.com/ppwfx/user-svc/pkg/ops"
 	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
 	"github.com/ppwfx/user-svc/pkg/utils"
@@ -30,7 +29,7 @@ var ctx = context.Background()
 var c = &http.Client{}
 var userSvcAddr string
 var dbConnection string
-var r = utils.RandSeq(6) + "-"
+var prefix = time.Now().Format("2006-01-02T15-04-05")
 
 func TestMain(m *testing.M) {
 	flag.BoolVar(&args.Remote, "remote", false, "")
@@ -53,7 +52,7 @@ func TestMain(m *testing.M) {
 
 	err := func() (err error) {
 		if !args.Remote {
-			err = ops.RemoveDockerContainers("user-svc-communication")
+			err = utils.RemoveDockerContainers("user-svc-communication")
 			if err != nil {
 				return
 			}
@@ -97,7 +96,7 @@ func TestMain(m *testing.M) {
 	c := m.Run()
 
 	if !args.Remote {
-		err = ops.RemoveDockerContainers("user-svc-communication")
+		err = utils.RemoveDockerContainers("user-svc-communication")
 		if err != nil {
 			l.Fatal(err)
 		}
@@ -119,7 +118,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "valid user",
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser0@example.com",
+				Email:    prefix + "testCreateUser0@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
@@ -129,12 +128,12 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "invalid user without unique email",
 			firstCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser1@example.com",
+				Email:    prefix + "testCreateUser1@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser1@example.com",
+				Email:    prefix + "testCreateUser1@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
@@ -144,7 +143,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "invalid user without valid email",
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser2@example",
+				Email:    prefix + "testCreateUser2@example",
 				Password: "password",
 				FullName: "johndoe",
 			},
@@ -164,7 +163,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "invalid user without password",
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser4@example.com",
+				Email:    prefix + "testCreateUser4@example.com",
 				Password: "",
 				FullName: "johndoe",
 			},
@@ -174,7 +173,7 @@ func TestCreateUser(t *testing.T) {
 		{
 			name: "invalid user without fullname",
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testCreateUser5@example.com",
+				Email:    prefix + "testCreateUser5@example.com",
 				Password: "password",
 				FullName: "",
 			},
@@ -239,12 +238,12 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "valid credentials",
 			createReq: types.CreateUserRequest{
-				Email:    r + "testAuthenticate0@example.com",
+				Email:    prefix + "testAuthenticate0@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testAuthenticate0@example.com",
+				Email:    prefix + "testAuthenticate0@example.com",
 				Password: "password",
 			},
 			expectError:        false,
@@ -253,12 +252,12 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "invalid credentials without password",
 			createReq: types.CreateUserRequest{
-				Email:    r + "testAuthenticate1@example.com",
+				Email:    prefix + "testAuthenticate1@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testAuthenticate1@example.com",
+				Email:    prefix + "testAuthenticate1@example.com",
 				Password: "",
 			},
 			expectError:        true,
@@ -267,12 +266,12 @@ func TestAuthenticate(t *testing.T) {
 		{
 			name: "invalid credentials without same password",
 			createReq: types.CreateUserRequest{
-				Email:    r + "testAuthenticate2@example.com",
+				Email:    prefix + "testAuthenticate2@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testAuthenticate2@example.com",
+				Email:    prefix + "testAuthenticate2@example.com",
 				Password: "password2",
 			},
 			expectError:        true,
@@ -286,7 +285,7 @@ func TestAuthenticate(t *testing.T) {
 				FullName: "",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testAuthenticate3@example.com",
+				Email:    prefix + "testAuthenticate3@example.com",
 				Password: "password2",
 			},
 			expectError:        true,
@@ -340,12 +339,12 @@ func TestListUsers(t *testing.T) {
 		{
 			name: "valid user",
 			createReq: types.CreateUserRequest{
-				Email:    r + "testListUsers0@test.com",
+				Email:    prefix + "testListUsers0@test.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testListUsers0@test.com",
+				Email:    prefix + "testListUsers0@test.com",
 				Password: "password",
 			},
 			expectError:        false,
@@ -354,12 +353,12 @@ func TestListUsers(t *testing.T) {
 		{
 			name: "invalid user without permissions",
 			createReq: types.CreateUserRequest{
-				Email:    r + "testListUsers1@example.com",
+				Email:    prefix + "testListUsers1@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testListUsers1@example.com",
+				Email:    prefix + "testListUsers1@example.com",
 				Password: "password",
 			},
 			expectError:        true,
@@ -417,21 +416,21 @@ func TestDeleteUser(t *testing.T) {
 		{
 			name: "valid user",
 			firstCreateReq: types.CreateUserRequest{
-				Email:    r + "testDeleteUser0@test.com",
+				Email:    prefix + "testDeleteUser0@test.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testDeleteUser0@example.com",
+				Email:    prefix + "testDeleteUser0@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testDeleteUser0@test.com",
+				Email:    prefix + "testDeleteUser0@test.com",
 				Password: "password",
 			},
 			deleteReq: types.DeleteUserRequest{
-				Email: r + "testDeleteUser0@example.com",
+				Email: prefix + "testDeleteUser0@example.com",
 			},
 			expectError:        false,
 			expectedStatusCode: 200,
@@ -439,21 +438,21 @@ func TestDeleteUser(t *testing.T) {
 		{
 			name: "invalid user without permissions",
 			firstCreateReq: types.CreateUserRequest{
-				Email:    r + "testDeleteUser1@test.com",
+				Email:    prefix + "testDeleteUser1@test.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			secondCreateReq: types.CreateUserRequest{
-				Email:    r + "testDeleteUser1@example.com",
+				Email:    prefix + "testDeleteUser1@example.com",
 				Password: "password",
 				FullName: "johndoe",
 			},
 			authReq: types.AuthenticateRequest{
-				Email:    r + "testDeleteUser1@test.com",
+				Email:    prefix + "testDeleteUser1@test.com",
 				Password: "password1",
 			},
 			deleteReq: types.DeleteUserRequest{
-				Email: r + "testDeleteUser1@example.com",
+				Email: prefix + "testDeleteUser1@example.com",
 			},
 			expectError:        true,
 			expectedStatusCode: 401,
