@@ -7,8 +7,14 @@ lint:
 build:
 	@${SOURCE_MAKE} && build
 
-test-integration:
-	@${SOURCE_MAKE} && test-integration
+test:
+	@${SOURCE_MAKE} && test
 
-terraform-apply:
-	@${SOURCE_MAKE} && terraform-apply
+push-docker:
+	@${SOURCE_MAKE} && push-docker
+
+migrate-database:
+	@${SOURCE_MAKE} && migrate-database
+
+deploy:
+	@${SOURCE_MAKE} && deploy
