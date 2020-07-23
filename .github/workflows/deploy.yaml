@@ -13,7 +13,7 @@ jobs:
           go-version: "1.13"
       - run: |
           echo "::add-path::${{ github.workspace }}/bin"
-      - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s v2.3.0
+      - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
       - run: make lint
       - run: make test
       - run: make build
