@@ -8,6 +8,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+        with:
+          go-version: '1.13
+      - run: make lint
+      - run: make test
+      - run: make build
       - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" > ./.make/credentials.json
-      - run: make terraform-apply
+      - run: make migrate-database
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: "270.0.0"
+          service_account_key: ${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}
+      - run: gcloud auth configure-docker
+      - run: make push
