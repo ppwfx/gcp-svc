@@ -16,7 +16,7 @@ resource "google_cloud_run_service" "user-svc" {
 
   template {
     metadata {
-      name = "user-svc-${var.user-svc-version}"
+      name = "user-svc-${replace(var.user-svc-version, ".", "-")}"
       annotations = {
         "autoscaling.knative.dev/maxScale" = "10"
         "run.googleapis.com/client-name" = "terraform"
