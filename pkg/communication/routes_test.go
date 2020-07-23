@@ -5,6 +5,7 @@ package communication
 import (
 	"context"
 	"flag"
+	"github.com/pkg/errors"
 	"net/http"
 	"os"
 	"os/exec"
@@ -57,23 +58,31 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			_, err = exec.Command("docker", strings.Fields("run -d --label user-svc-communication --rm -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=user-svc -p 5432:5432 postgres")...).Output()
+			o, err := exec.Command("docker", strings.Fields("run -d --label user-svc-communication --rm -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=user-svc -p 5432:5432 postgres")...).Output()
 			if err != nil {
+				err = errors.Wrapf(err, "failed to run postgres container: %s", o)
+
 				return
 			}
 
 			db, err = persistence.OpenPostgresDB(25, 25, 5*time.Minute, dbConnection)
 			if err != nil {
+				err = errors.Wrapf(err, "failed to open postgres")
+
 				return
 			}
 
 			err = persistence.ConnectToPostgresDb(ctx, db, 10*time.Second)
 			if err != nil {
+				err = errors.Wrapf(err, "failed to connect to postgres")
+
 				return
 			}
 
 			err = persistence.Migrate(ctx, db)
 			if err != nil {
+				err = errors.Wrapf(err, "failed to migrate postgres")
+
 				return
 			}
 
@@ -82,6 +91,7 @@ func TestMain(m *testing.M) {
 			go func() {
 				err = Serve(v, l, db, "0.0.0.0:80", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
 				if err != nil {
+					err = errors.Wrapf(err, "user-svc failed to listen")
 					l.Fatal(err)
 				}
 			}()
@@ -98,6 +108,8 @@ func TestMain(m *testing.M) {
 	if !args.Remote {
 		err = utils.RemoveDockerContainers("user-svc-communication")
 		if err != nil {
+			err = errors.Wrapf(err, "failed to remove docker containers")
+
 			l.Fatal(err)
 		}
 	}
