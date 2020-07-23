@@ -16,7 +16,7 @@ jobs:
       - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
       - run: make lint
       - run: make test
-      - run: make build
+      - run: make build-docker
       - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" > ./.make/credentials.json
       - run: make migrate-database

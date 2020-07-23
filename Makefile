@@ -4,8 +4,8 @@ SHELL := /bin/bash
 lint:
 	@${SOURCE_MAKE} && lint
 
-build:
-	@${SOURCE_MAKE} && build
+build-docker:
+	@${SOURCE_MAKE} && build-docker
 
 test:
 	@${SOURCE_MAKE} && test
