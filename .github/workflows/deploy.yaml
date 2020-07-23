@@ -18,7 +18,7 @@ jobs:
       - run: make test
       - run: make build-docker
       - uses: hashicorp/setup-terraform@v1
-      - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" > ./.make/credentials.json
+      - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" | base64 -d > ./.make/credentials.json
       - run: make migrate-database
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
