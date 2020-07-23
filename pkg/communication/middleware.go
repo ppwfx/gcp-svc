@@ -2,6 +2,7 @@ package communication
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -141,15 +142,13 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 		next(iw, r)
 
 		l.With(
-			"http_req_remoteaddr", r.RemoteAddr,
-			"http_req_method", r.Method,
-			"http_req_url", r.URL.String(),
-			"http_req_contentlength", r.ContentLength,
-			"http_resp_statuscode", iw.code,
-			"http_resp_statustext", http.StatusText(iw.code),
-			"http_resp_size", iw.count,
-			"http_resp_took", time.Since(begin).String(),
-			"http_resp_sec", time.Since(begin).Seconds(),
+			"remoteIp", r.RemoteAddr,
+			"requestMethod", r.Method,
+			"requestUrl", r.URL.String(),
+			"requestSize", r.ContentLength,
+			"status", iw.code,
+			"responseSize", iw.count,
+			"latency", fmt.Sprintf("%vs", time.Since(begin).Seconds()),
 		).Info()
 	}
 }
