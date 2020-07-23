@@ -1,3 +1,7 @@
+variable "svc-version" {
+  type = string
+}
+
 terraform {
   backend "gcs" {
     bucket = "tf-user-svc"
@@ -27,6 +31,7 @@ module "user-svc-postgres" {
 module "user-svc" {
   source = "./modules/user-svc"
 
+  svc-version = var.svc-version
   postgresql_instance_connection_name = module.user-svc-postgres.connection_name
   container_args = [
     "--addr",

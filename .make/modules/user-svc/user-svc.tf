@@ -1,3 +1,7 @@
+variable "svc-version" {
+  type = string
+}
+
 variable "postgresql_instance_connection_name" {
   type = string
 }
@@ -22,7 +26,7 @@ resource "google_cloud_run_service" "user-svc" {
 
     spec {
       containers {
-        image = "gcr.io/user-svc/user-svc:latest"
+        image = "gcr.io/user-svc/user-svc:${var.svc-version}"
         command = ["./user-svc"]
         args = var.container_args
       }
