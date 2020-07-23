@@ -11,7 +11,7 @@ jobs:
       - uses: actions/setup-go@v1
         with:
           go-version: "1.13"
-      - run: go get -u github.com/securego/gosec/cmd/gosec
+      - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s v2.3.0
       - run: make lint
       - run: make test
       - run: make build
