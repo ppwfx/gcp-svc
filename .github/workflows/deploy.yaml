@@ -12,8 +12,6 @@ jobs:
         with:
           go-version: "1.13"
       - run: |
-          echo "::set-env name=GOPATH::${{ github.workspace }}/go"
-          echo "::add-path::${{ github.workspace }}/go/bin"
           echo "::add-path::${{ github.workspace }}/bin"
       - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s v2.3.0
       - run: make lint
