@@ -11,14 +11,15 @@ variable "container_args" {
 }
 
 resource "google_cloud_run_service" "user-svc" {
-  name     = "user-svc"
+  name = "user-svc"
   location = "us-east1"
 
   template {
     metadata {
       annotations = {
-        "autoscaling.knative.dev/maxScale"      = "10"
-        "run.googleapis.com/client-name"        = "terraform"
+        name = "user-svc-${var.user-svc-version}"
+        "autoscaling.knative.dev/maxScale" = "10"
+        "run.googleapis.com/client-name" = "terraform"
         "run.googleapis.com/cloudsql-instances" = var.postgresql_instance_connection_name
       }
     }
@@ -26,17 +27,15 @@ resource "google_cloud_run_service" "user-svc" {
     spec {
       containers {
         image = "gcr.io/user-svc/user-svc:${var.user-svc-version}"
-        command = ["./user-svc"]
+        command = [
+          "./user-svc"]
         args = var.container_args
-      }
-      metadata {
-        name = "user-svc-${var.user-svc-version}"
       }
     }
   }
 
   traffic {
-    percent         = 100
+    percent = 100
     latest_revision = true
   }
 }
@@ -51,8 +50,8 @@ data "google_iam_policy" "public" {
 }
 
 resource "google_cloud_run_service_iam_policy" "user-svc-public" {
-  location    = google_cloud_run_service.user-svc.location
-  service     = google_cloud_run_service.user-svc.name
+  location = google_cloud_run_service.user-svc.location
+  service = google_cloud_run_service.user-svc.name
 
   policy_data = data.google_iam_policy.public.policy_data
 }
