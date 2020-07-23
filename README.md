@@ -2,6 +2,7 @@
 
 ### todo
 
+- terraform state encryption
 - stress test
 - observability
     - tracing
