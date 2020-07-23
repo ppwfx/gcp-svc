@@ -22,7 +22,7 @@ jobs:
       - run: make build-docker
       - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" | base64 -d > ./.make/credentials.json
-      - run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.11.0/migrate.linux-amd64.tar.gz | tar xvz && mkdir bin && mv migrate.linux-amd64 bin/migrate
+      - run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.11.0/migrate.linux-amd64.tar.gz | tar xvz && mv migrate.linux-amd64 bin/migrate
       - run: make migrate-database
       - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
         with:
