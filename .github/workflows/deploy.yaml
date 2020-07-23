@@ -30,3 +30,4 @@ jobs:
           service_account_key: ${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}
       - run: gcloud auth configure-docker --quiet
       - run: make push-docker
+      - run: make deploy
