@@ -2,9 +2,9 @@
 
 set -eox pipefail
 
-function build-docker {
-    TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
+TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
 
+function build-docker {
     docker build -f .make/user-svc.Dockerfile \
         --tag user-svc/user-svc:$TAG \
         --tag gcr.io/user-svc/user-svc:$TAG .
@@ -13,7 +13,7 @@ function build-docker {
 function push-docker {
     gcloud auth configure-docker
 
-    docker push gcr.io/user-svc/user-svc:latest
+    docker push gcr.io/user-svc/user-svc:$TAG
 }
 
 function migrate-database {
@@ -24,8 +24,6 @@ function migrate-database {
 }
 
 function deploy {
-    TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
-
     cd ./.make
     terraform init
     terraform plan -target=module.user-svc -var svc-version=$TAG
