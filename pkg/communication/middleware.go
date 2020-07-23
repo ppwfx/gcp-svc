@@ -16,20 +16,22 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		t := extractAccessToken(r)
 
+		l := utils.GetContextLogger(r.Context())
+
 		claims, err := business.GetJwtClaims(hmacSecret, t)
 		if err != nil {
 			utils.GetContextLogger(r.Context()).With(
 				types.LogFunc, "composeAuthMiddleware",
 			).Error(err)
 
-			writeJsonResponse(w, http.StatusUnauthorized, types.ErrorResponse{
+			writeJsonResponse(l, w, http.StatusUnauthorized, types.ErrorResponse{
 				Error: types.ErrorUnauthorized,
 			})
 
 			return
 		}
 
-		l := utils.GetContextLogger(r.Context()).With(
+		l = l.With(
 			types.LogSub, claims[types.ClaimSub],
 			types.LogRole, claims[types.ClaimRole],
 		)
@@ -74,7 +76,9 @@ func authorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// TODO
 		//log.Println(err)
 
-		writeJsonResponse(w, http.StatusForbidden, types.ErrorResponse{
+		l := utils.GetContextLogger(r.Context())
+
+		writeJsonResponse(l, w, http.StatusForbidden, types.ErrorResponse{
 			Error: types.ErrorUnauthorized,
 		})
 	}
