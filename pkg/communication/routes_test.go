@@ -58,7 +58,8 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			o, err := exec.Command("docker", strings.Fields("run -d --label user-svc-communication --rm -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=user-svc -p 5432:5432 postgres")...).Output()
+			var o []byte
+			o, err = exec.Command("docker", strings.Fields("run -d --label user-svc-communication --rm -e POSTGRES_USER=user -e POSTGRES_PASSWORD=password -e POSTGRES_DB=user-svc -p 5432:5432 postgres")...).Output()
 			if err != nil {
 				err = errors.Wrapf(err, "failed to run postgres container: %s", o)
 
