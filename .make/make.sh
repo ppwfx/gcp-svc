@@ -3,9 +3,11 @@
 set -eox pipefail
 
 function build-docker {
+    TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
+
     docker build -f .make/user-svc.Dockerfile \
-        --tag user-svc/user-svc:latest \
-        --tag gcr.io/user-svc/user-svc:latest .
+        --tag user-svc/user-svc:$TAG \
+        --tag gcr.io/user-svc/user-svc:$TAG .
 }
 
 function push-docker {
@@ -22,10 +24,12 @@ function migrate-database {
 }
 
 function deploy {
+    TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
+
     cd ./.make
     terraform init
-    terraform plan -target=module.user-svc
-    terraform apply -target=module.user-svc -auto-approve
+    terraform plan -target=module.user-svc -var svc-version=$TAG
+    terraform apply -target=module.user-svc -auto-approve -var svc-version=$TAG
 }
 
 function lint {
