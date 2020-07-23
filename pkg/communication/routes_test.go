@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"github.com/pkg/errors"
+	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -93,7 +94,7 @@ func TestMain(m *testing.M) {
 				err = Serve(v, l, db, "0.0.0.0:80", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
 				if err != nil {
 					err = errors.Wrapf(err, "user-svc failed to listen")
-					l.Fatal(err)
+					log.Fatal(err)
 				}
 			}()
 		}
@@ -101,7 +102,7 @@ func TestMain(m *testing.M) {
 		return
 	}()
 	if err != nil {
-		l.Fatal(err)
+		log.Fatal(err)
 	}
 
 	c := m.Run()
@@ -111,7 +112,7 @@ func TestMain(m *testing.M) {
 		if err != nil {
 			err = errors.Wrapf(err, "failed to remove docker containers")
 
-			l.Fatal(err)
+			log.Fatal(err)
 		}
 	}
 
