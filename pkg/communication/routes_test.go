@@ -44,7 +44,7 @@ func TestMain(m *testing.M) {
 		dbConnection = args.DbConnection
 	} else {
 		dbConnection = "host=localhost port=5432 user=user password=password dbname=user-svc sslmode=disable"
-		userSvcAddr = "http://localhost:80"
+		userSvcAddr = "http://localhost:30080"
 	}
 
 	//l, _ := zap.NewDevelopment(zap.IncreaseLevel(zap.NewAtomicLevelAt(zap.InfoLevel)))
@@ -91,7 +91,7 @@ func TestMain(m *testing.M) {
 			v := validator.New()
 
 			go func() {
-				err = Serve(v, l, db, "0.0.0.0:80", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
+				err = Serve(v, l, db, "0.0.0.0:30080", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
 				if err != nil {
 					err = errors.Wrapf(err, "user-svc failed to listen")
 					log.Fatal(err)
