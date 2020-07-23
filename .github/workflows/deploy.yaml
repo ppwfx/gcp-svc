@@ -15,7 +15,8 @@ jobs:
           echo "::set-env name=GOPATH::$(go env GOPATH)"
           echo "::add-path::$(go env GOPATH)/bin"
           echo "::add-path::${{ github.workspace }}/bin"
-      - run: go get -tags 'postgres' -u github.com/golang-migrate/migrate/cmd/migrate
+      - run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.11.0/migrate.linux-amd64.tar.gz | tar xvz
+      - run: ls
       - run: migrate
       - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" | base64 -d > ./.make/credentials.json
