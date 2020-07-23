@@ -5,6 +5,7 @@ go 1.13
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/go-playground/validator/v10 v10.3.0
+	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/google/uuid v1.1.1
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/lib/pq v1.3.0
