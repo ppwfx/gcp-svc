@@ -1,5 +1,6 @@
 variable "svc-version" {
   type = string
+  default = "skip"
 }
 
 terraform {
