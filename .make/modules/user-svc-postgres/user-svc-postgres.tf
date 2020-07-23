@@ -1,5 +1,5 @@
 resource "google_sql_database_instance" "postgresql" {
-  name = "user-svc-1"
+  name = "user-svc-2"
   database_version = "POSTGRES_12"
 
   settings {
