@@ -63,7 +63,7 @@ func main() {
 			return
 		}
 
-		err = persistence.ConnectToPostgresDb(ctx, m, db, 5*time.Second)
+		err = persistence.ConnectToPostgresDb(ctx, db, 5*time.Second)
 		if err != nil {
 			err = errors.Wrap(err, "failed to connect to postgres")
 
