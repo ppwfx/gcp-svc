@@ -2,8 +2,6 @@ package communication
 
 import (
 	"encoding/json"
-	"go.uber.org/zap"
-	"log"
 	"net"
 	"net/http"
 	"strings"
@@ -12,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
+	"go.uber.org/zap"
 )
 
 func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
@@ -46,7 +45,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		var statusCode int
 
 		defer func() {
-			writeJsonResponse(w, statusCode, rsp)
+			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.CreateUserRequest
@@ -67,7 +66,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		var statusCode int
 
 		defer func() {
-			writeJsonResponse(w, statusCode, rsp)
+			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.ListUsersRequest
@@ -88,7 +87,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		var statusCode int
 
 		defer func() {
-			writeJsonResponse(w, statusCode, rsp)
+			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.DeleteUserRequest
@@ -114,7 +113,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		var statusCode int
 
 		defer func() {
-			writeJsonResponse(w, statusCode, rsp)
+			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.AuthenticateRequest
@@ -135,7 +134,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		return
 	}
 
-	log.Printf("listening on %v\n", addr)
+	logger.Infof("listening on %v\n", addr)
 
 	err = http.Serve(l, m)
 	if err != nil {
@@ -149,10 +148,10 @@ func extractAccessToken(r *http.Request) (t string) {
 	return strings.TrimPrefix(r.Header.Get(types.HeaderAuthorization), types.PrefixBearer)
 }
 
-func writeJsonResponse(w http.ResponseWriter, statusCode int, rsp interface{}) {
+func writeJsonResponse(logger *zap.SugaredLogger, w http.ResponseWriter, statusCode int, rsp interface{}) {
 	b, err := json.Marshal(rsp)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 
 		w.WriteHeader(statusCode)
 
@@ -163,6 +162,6 @@ func writeJsonResponse(w http.ResponseWriter, statusCode int, rsp interface{}) {
 	w.WriteHeader(statusCode)
 	_, err = w.Write(b)
 	if err != nil {
-		log.Println(err)
+		logger.Error(err)
 	}
 }

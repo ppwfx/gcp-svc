@@ -2,10 +2,12 @@ package communication
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
 	"github.com/ppwfx/user-svc/pkg/utils"
@@ -16,20 +18,24 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		t := extractAccessToken(r)
 
+		l := utils.GetContextLogger(r.Context())
+
 		claims, err := business.GetJwtClaims(hmacSecret, t)
 		if err != nil {
+			err = errors.Wrapf(err, "failed to get jwt claims")
+
 			utils.GetContextLogger(r.Context()).With(
 				types.LogFunc, "composeAuthMiddleware",
 			).Error(err)
 
-			writeJsonResponse(w, http.StatusUnauthorized, types.ErrorResponse{
+			writeJsonResponse(l, w, http.StatusUnauthorized, types.ErrorResponse{
 				Error: types.ErrorUnauthorized,
 			})
 
 			return
 		}
 
-		l := utils.GetContextLogger(r.Context()).With(
+		l = l.With(
 			types.LogSub, claims[types.ClaimSub],
 			types.LogRole, claims[types.ClaimRole],
 		)
@@ -74,7 +80,9 @@ func authorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// TODO
 		//log.Println(err)
 
-		writeJsonResponse(w, http.StatusForbidden, types.ErrorResponse{
+		l := utils.GetContextLogger(r.Context())
+
+		writeJsonResponse(l, w, http.StatusForbidden, types.ErrorResponse{
 			Error: types.ErrorUnauthorized,
 		})
 	}
@@ -137,15 +145,13 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 		next(iw, r)
 
 		l.With(
-			"http_req_remoteaddr", r.RemoteAddr,
-			"http_req_method", r.Method,
-			"http_req_url", r.URL.String(),
-			"http_req_contentlength", r.ContentLength,
-			"http_resp_statuscode", iw.code,
-			"http_resp_statustext", http.StatusText(iw.code),
-			"http_resp_size", iw.count,
-			"http_resp_took", time.Since(begin).String(),
-			"http_resp_sec", time.Since(begin).Seconds(),
+			"remoteIp", r.RemoteAddr,
+			"requestMethod", r.Method,
+			"requestUrl", r.URL.String(),
+			"requestSize", r.ContentLength,
+			"status", iw.code,
+			"responseSize", iw.count,
+			"latency", fmt.Sprintf("%vs", time.Since(begin).Seconds()),
 		).Info()
 	}
 }

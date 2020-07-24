@@ -2,8 +2,11 @@
 
 ### todo
 
+- terraform state encryption
 - stress test
 - observability
+    - logging
+        - use jsonPayload specific log fields, see [LogEntry](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity)
     - tracing
     - metrics
 - add ttl parameter to generate token
