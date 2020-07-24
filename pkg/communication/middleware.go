@@ -24,9 +24,7 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 		if err != nil {
 			err = errors.Wrapf(err, "failed to get jwt claims")
 
-			utils.GetContextLogger(r.Context()).With(
-				types.LogFunc, "composeAuthMiddleware",
-			).Error(err)
+			utils.GetContextLogger(r.Context()).Error(err)
 
 			writeJsonResponse(l, w, http.StatusUnauthorized, types.ErrorResponse{
 				Error: types.ErrorUnauthorized,
@@ -135,7 +133,7 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 		iw := &interceptingWriter{0, http.StatusOK, w}
 
 		l := l.With(
-			"req_id", uuid.New().String(),
+			types.LogId, uuid.New().String(),
 		)
 
 		r = r.WithContext(utils.WithContextLogger(r.Context(), l))
@@ -145,13 +143,13 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 		next(iw, r)
 
 		l.With(
-			"remoteIp", r.RemoteAddr,
-			"requestMethod", r.Method,
-			"requestUrl", r.URL.String(),
-			"requestSize", r.ContentLength,
-			"status", iw.code,
-			"responseSize", iw.count,
-			"latency", fmt.Sprintf("%vs", time.Since(begin).Seconds()),
+			types.LogRemoteIp, r.RemoteAddr,
+			types.LogRequestMethod, r.Method,
+			types.LogRequestUrl, r.URL.String(),
+			types.LogRequestSize, r.ContentLength,
+			types.LogStatus, iw.code,
+			types.LogResponseSize, iw.count,
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		).Info()
 	}
 }
