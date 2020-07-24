@@ -1,0 +1,20 @@
+name: integration
+on:
+  push:
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+        with:
+          go-version: "1.13"
+      - run: |
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+          echo "::add-path::$(go env GOPATH)/bin"
+          mkdir bin
+          echo "::add-path::${{ github.workspace }}/bin"
+      - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
+      - run: make lint
+      - run: make test
+      - run: make build-docker
