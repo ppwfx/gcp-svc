@@ -2,6 +2,7 @@
 
 ### todo
 
+- add version to binaries
 - terraform state encryption
 - stress test
 - observability
@@ -9,6 +10,8 @@
         - use jsonPayload specific log fields, see [LogEntry](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity)
     - tracing
     - metrics
+- migration
+    - use go-migrate internally
 - add ttl parameter to generate token
 - httptest
 - http server
@@ -16,7 +19,7 @@
 - cors middleware
 - token invalidation
 - refresh token
-- migration
+
 - owasp
 - read secrets from files
 
