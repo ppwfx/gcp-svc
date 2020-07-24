@@ -1,13 +1,33 @@
 name: release
 on:
   push:
-#    tags:
-#      - v*
+    tags:
+      - v*
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+        with:
+          go-version: "1.13"
+      - run: |
+          echo "::set-env name=GOPATH::$(go env GOPATH)"
+          echo "::add-path::$(go env GOPATH)/bin"
+          mkdir bin
+          echo "::add-path::${{ github.workspace }}/bin"
+      - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
+      - run: make lint
+      - run: make test
+      - run: make build-docker
       - uses: hashicorp/setup-terraform@v1
       - run: echo "${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}" | base64 -d > ./.make/credentials.json
-      - run: make terraform-apply
+      - run: curl -L https://github.com/golang-migrate/migrate/releases/download/v4.11.0/migrate.linux-amd64.tar.gz | tar xvz && mv migrate.linux-amd64 bin/migrate
+      - run: make migrate-database
+      - uses: GoogleCloudPlatform/github-actions/setup-gcloud@master
+        with:
+          version: "270.0.0"
+          service_account_key: ${{ secrets.TERRAFORM_GCP_SERVICEACCOUNT }}
+      - run: gcloud auth configure-docker --quiet
+      - run: make push-docker
+      - run: make deploy
