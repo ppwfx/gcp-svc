@@ -3,6 +3,7 @@ package communication
 import (
 	"context"
 	"fmt"
+	"github.com/pkg/errors"
 	"net/http"
 	"time"
 
@@ -21,6 +22,8 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 
 		claims, err := business.GetJwtClaims(hmacSecret, t)
 		if err != nil {
+			err = errors.Wrapf(err, "failed to get jwt claims")
+
 			utils.GetContextLogger(r.Context()).With(
 				types.LogFunc, "composeAuthMiddleware",
 			).Error(err)
