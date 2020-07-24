@@ -23,7 +23,9 @@ func CreateUser(ctx context.Context, db *sqlx.DB, argonOpts Argon2IdOpts, v *val
 		)
 
 		if err != nil {
-			l.Error(err)
+			err = errors.Wrap(err, "failed to create user")
+
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -84,7 +86,9 @@ func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req type
 		)
 
 		if err != nil {
-			l.Error(err)
+			err = errors.Wrap(err, "failed to list users")
+
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -104,7 +108,7 @@ func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req type
 
 	us, err := persistence.SelectUsersOrderByIdDesc(ctx, db)
 	if err != nil {
-		err = errors.Wrap(err, "failed to users from database")
+		err = errors.Wrap(err, "failed to get users from database")
 
 		rsp.Error = types.ErrorInternalError
 		statusCode = http.StatusInternalServerError
@@ -131,7 +135,9 @@ func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req typ
 		)
 
 		if err != nil {
-			l.Error(err)
+			err = errors.Wrap(err, "failed to delete user")
+
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -180,7 +186,9 @@ func Authenticate(ctx context.Context, db *sqlx.DB, v *validator.Validate, hmacS
 		)
 
 		if err != nil {
-			l.Error(err)
+			err = errors.Wrap(err, "failed to authenticate")
+
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}

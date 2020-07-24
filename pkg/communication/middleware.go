@@ -22,9 +22,9 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 
 		claims, err := business.GetJwtClaims(hmacSecret, t)
 		if err != nil {
-			err = errors.Wrapf(err, "failed to get jwt claims")
+			err = errors.Wrapf(err, "failed to authenticate user: failed to get jwt claims from jwt token: %s", t)
 
-			utils.GetContextLogger(r.Context()).Error(err)
+			utils.GetContextLogger(r.Context()).Warn(err)
 
 			writeJsonResponse(l, w, http.StatusUnauthorized, types.ErrorResponse{
 				Error: types.ErrorUnauthorized,
@@ -152,7 +152,20 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 			ResponseSize:       iw.count,
 			ResponseStatusCode: iw.code,
 			Latency:            fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
-		}),
-		).Info()
+		}))
+
+		if iw.code >= 500 {
+			l.Error()
+
+			return
+		}
+
+		if iw.code >= 400 {
+			l.Warn()
+
+			return
+		}
+
+		l.Info()
 	}
 }
