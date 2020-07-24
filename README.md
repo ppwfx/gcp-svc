@@ -4,8 +4,12 @@
 
 - add version to binaries
 - terraform state encryption
+- general gcp setup
+    - budget alert
 - stress test
 - observability
+    - alerts
+        - uptime check
     - logging
         - use jsonPayload specific log fields, see [LogEntry](https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#LogSeverity)
     - tracing
@@ -19,7 +23,6 @@
 - cors middleware
 - token invalidation
 - refresh token
-
 - owasp
 - read secrets from files
 
