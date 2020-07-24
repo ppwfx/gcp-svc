@@ -24,7 +24,7 @@ func main() {
 	flag.StringVar(&args.AllowedSubjectSuffix, "allowed-subject-suffix", "", "")
 	flag.Parse()
 
-	ctx, _ := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	err := func() (err error) {
 		l, err := utils.NewProductionLogger("user-svc", "dev")
