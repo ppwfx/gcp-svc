@@ -2,6 +2,7 @@ package business
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -18,9 +19,7 @@ func CreateUser(ctx context.Context, db *sqlx.DB, argonOpts Argon2IdOpts, v *val
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "CreateUser",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
@@ -80,9 +79,7 @@ func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req type
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "ListUsersRequest",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"rsp_users_count", len(rsp.Users),
 		)
 
@@ -130,9 +127,7 @@ func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req typ
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "DeleteUser",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
@@ -181,9 +176,7 @@ func Authenticate(ctx context.Context, db *sqlx.DB, v *validator.Validate, hmacS
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "Authenticate",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
