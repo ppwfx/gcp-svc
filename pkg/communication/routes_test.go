@@ -5,7 +5,6 @@ package communication
 import (
 	"context"
 	"flag"
-	"github.com/pkg/errors"
 	"log"
 	"net/http"
 	"os"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/communication/client"
 	"github.com/ppwfx/user-svc/pkg/persistence"
@@ -47,7 +47,6 @@ func TestMain(m *testing.M) {
 		userSvcAddr = "http://localhost:30080"
 	}
 
-	//l, _ := zap.NewDevelopment(zap.IncreaseLevel(zap.NewAtomicLevelAt(zap.InfoLevel)))
 	l := zap.NewNop().Sugar()
 
 	ctx = utils.WithContextLogger(ctx, l)
