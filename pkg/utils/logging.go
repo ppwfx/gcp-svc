@@ -72,10 +72,8 @@ func (c *core) Write(entry zapcore.Entry, fields []zapcore.Field) error {
 
 	fn := runtime.FuncForPC(entry.Caller.PC)
 	if fn != nil {
-		fields = append(fields, zap.String("function", fn.Name()))
+		fields = append(fields, zap.String("function", strings.TrimSuffix(strings.TrimRight(fn.Name(), "0123456789"), ".func")))
 	}
-
-	strings.SplitN(entry.Caller.File, "pkg/", 1)
 
 	return c.Core.Write(entry, fields)
 }
