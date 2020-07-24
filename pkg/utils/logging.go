@@ -66,14 +66,57 @@ func (c *core) Check(entry zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.Che
 	return ce
 }
 
-func (c *core) Write(entry zapcore.Entry, fields []zapcore.Field) error {
-	fields = append(fields, zap.String("file", entry.Caller.File))
-	fields = append(fields, zap.Int("line", entry.Caller.Line))
+type LogHttpRequest struct {
+	Method             string
+	URL                string
+	UserAgent          string
+	Referrer           string
+	RemoteIP           string
+	RequestSize        int64
+	ResponseSize       int64
+	ResponseStatusCode int
+	Latency            string
+}
 
+func (r *LogHttpRequest) MarshalLogObject(e zapcore.ObjectEncoder) error {
+	e.AddString("method", r.Method)
+	e.AddString("url", r.URL)
+	e.AddString("userAgent", r.UserAgent)
+	e.AddString("referrer", r.Referrer)
+	e.AddInt("responseStatusCode", r.ResponseStatusCode)
+	e.AddString("remoteIp", r.RemoteIP)
+	e.AddInt64("requestSize", r.RequestSize)
+	e.AddInt64("responseSize", r.ResponseSize)
+	e.AddString("latency", r.Latency)
+
+	return nil
+}
+
+type reportLocation struct {
+	filePath     string
+	lineNumber   int
+	functionName string
+}
+
+func (l *reportLocation) MarshalLogObject(e zapcore.ObjectEncoder) error {
+	e.AddString("filePath", l.filePath)
+	e.AddInt("lineNumber", l.lineNumber)
+	e.AddString("functionName", l.functionName)
+	return nil
+}
+
+func (c *core) Write(entry zapcore.Entry, fields []zapcore.Field) error {
+	var functionName string
 	fn := runtime.FuncForPC(entry.Caller.PC)
 	if fn != nil {
-		fields = append(fields, zap.String("function", strings.TrimSuffix(strings.TrimRight(fn.Name(), "0123456789"), ".func")))
+		functionName = strings.TrimSuffix(strings.TrimRight(fn.Name(), "0123456789"), ".func")
 	}
+
+	fields = append(fields, zap.Object("context.reportLocation", &reportLocation{
+		filePath:     entry.Caller.File,
+		lineNumber:   entry.Caller.Line,
+		functionName: functionName,
+	}))
 
 	return c.Core.Write(entry, fields)
 }
@@ -90,7 +133,7 @@ func NewProductionLogger(service string, version string) (sl *zap.SugaredLogger,
 
 	l, err := c.Build(zap.WrapCore(func(c zapcore.Core) zapcore.Core {
 		return &core{Core: c}
-	}), zap.Fields(zap.Object("userLabels", userLabels{
+	}), zap.Fields(zap.Object("serviceContext", userLabels{
 		service: service,
 		version: version,
 	})))

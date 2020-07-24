@@ -34,7 +34,7 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 		}
 
 		l = l.With(
-			types.LogSub, claims[types.ClaimSub],
+			types.LogUser, claims[types.ClaimSub],
 			types.LogRole, claims[types.ClaimRole],
 		)
 
@@ -113,7 +113,7 @@ func composeMaxBodyBytesMiddleware(n int64, next http.HandlerFunc) http.HandlerF
 }
 
 type interceptingWriter struct {
-	count int
+	count int64
 	code  int
 	http.ResponseWriter
 }
@@ -124,7 +124,7 @@ func (iw *interceptingWriter) WriteHeader(code int) {
 }
 
 func (iw *interceptingWriter) Write(p []byte) (int, error) {
-	iw.count += len(p)
+	iw.count += int64(len(p))
 	return iw.ResponseWriter.Write(p)
 }
 
@@ -142,14 +142,17 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 
 		next(iw, r)
 
-		l.With(
-			types.LogRemoteIp, r.RemoteAddr,
-			types.LogRequestMethod, r.Method,
-			types.LogRequestUrl, r.URL.String(),
-			types.LogRequestSize, r.ContentLength,
-			types.LogStatus, iw.code,
-			types.LogResponseSize, iw.count,
-			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
+		l.With(zap.Object(types.LogHttpRequest, &utils.LogHttpRequest{
+			Method:             r.Method,
+			URL:                r.URL.String(),
+			UserAgent:          r.UserAgent(),
+			Referrer:           r.Referer(),
+			RemoteIP:           r.RemoteAddr,
+			RequestSize:        r.ContentLength,
+			ResponseSize:       iw.count,
+			ResponseStatusCode: iw.code,
+			Latency:            fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
+		}),
 		).Info()
 	}
 }

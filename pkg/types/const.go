@@ -21,16 +21,10 @@ const (
 	RoleUser                      = "user"
 	RoleAdmin                     = "admin"
 	ContextKeyClaims              = "claims"
+	LogHttpRequest                = "context.httpRequest"
+	LogUser                       = "context.user"
 	LogId                         = "id"
-	LogSub                        = "sub"
 	LogRole                       = "role"
-	LogFunction                   = "function"
-	LogRemoteIp                   = "remoteIp"
-	LogRequestMethod              = "requestMethod"
-	LogRequestUrl                 = "requestUrl"
-	LogRequestSize                = "requestSize"
-	LogStatus                     = "status"
-	LogResponseSize               = "responseSize"
 	LogLatency                    = "latency"
 )
 
