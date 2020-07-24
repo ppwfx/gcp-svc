@@ -21,12 +21,17 @@ const (
 	RoleUser                      = "user"
 	RoleAdmin                     = "admin"
 	ContextKeyClaims              = "claims"
+	LogId                         = "id"
 	LogSub                        = "sub"
 	LogRole                       = "role"
-	LogTook                       = "took"
-	LogSec                        = "sec"
-	LogFunc                       = "func"
-	PkgPersistence                = "persistence"
+	LogFunction                   = "function"
+	LogRemoteIp                   = "remoteIp"
+	LogRequestMethod              = "requestMethod"
+	LogRequestUrl                 = "requestUrl"
+	LogRequestSize                = "requestSize"
+	LogStatus                     = "status"
+	LogResponseSize               = "responseSize"
+	LogLatency                    = "latency"
 )
 
 var (
