@@ -52,7 +52,7 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 		)
 
 		if err != nil {
-			l.Error(err)
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -82,7 +82,7 @@ func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error)
 		)
 
 		if err != nil {
-			l.Error(err)
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -106,7 +106,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.User
 		)
 
 		if err != nil {
-			l.Error(err)
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -130,7 +130,7 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserMod
 		)
 
 		if err != nil {
-			l.Error(err)
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
@@ -153,7 +153,7 @@ func DeleteUserByEmail(ctx context.Context, db *sqlx.DB, e string) (err error) {
 		)
 
 		if err != nil {
-			l.Error(err)
+			l.Warn(err)
 		} else {
 			l.Debug()
 		}
