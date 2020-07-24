@@ -24,18 +24,31 @@ func main() {
 	flag.StringVar(&args.AllowedSubjectSuffix, "allowed-subject-suffix", "", "")
 	flag.Parse()
 
+	ctx, _ := context.WithCancel(context.Background())
+
 	err := func() (err error) {
 		l, err := utils.NewProductionLogger("user-svc", "dev")
 		if err != nil {
-			err = errors.Wrap(err, "failed to get logger")
+			err = errors.Wrap(err, "failed to create logger")
 
 			return
 		}
-
 		defer func() {
 			err := l.Sync()
 			if err != nil {
 				err = errors.Wrap(err, "failed to flush logger buffer")
+
+				log.Print(err)
+
+				return
+			}
+		}()
+
+		c, m, err := utils.NewProductionMetrics(ctx, "user-svc")
+		defer func() {
+			err := c.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close monitoring client")
 
 				log.Print(err)
 
@@ -50,7 +63,7 @@ func main() {
 			return
 		}
 
-		err = persistence.ConnectToPostgresDb(context.Background(), db, 5*time.Second)
+		err = persistence.ConnectToPostgresDb(ctx, m, db, 5*time.Second)
 		if err != nil {
 			err = errors.Wrap(err, "failed to connect to postgres")
 
@@ -59,7 +72,7 @@ func main() {
 
 		v := validator.New()
 
-		err = communication.Serve(v, l, db, args.Addr, args.HmacSecret, args.AllowedSubjectSuffix, business.DefaultArgon2IdOpts)
+		err = communication.Serve(v, l, m, db, args.Addr, args.HmacSecret, args.AllowedSubjectSuffix, business.DefaultArgon2IdOpts)
 		if err != nil {
 			err = errors.Wrap(err, "failed to listen")
 

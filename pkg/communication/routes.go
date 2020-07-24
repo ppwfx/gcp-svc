@@ -2,6 +2,8 @@ package communication
 
 import (
 	"encoding/json"
+	"github.com/armon/go-metrics"
+	"github.com/pkg/errors"
 	"net"
 	"net/http"
 	"strings"
@@ -13,8 +15,8 @@ import (
 	"go.uber.org/zap"
 )
 
-func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
-	m := http.NewServeMux()
+func Serve(v *validator.Validate, logger *zap.SugaredLogger, m *metrics.Metrics, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
+	mux := http.NewServeMux()
 
 	var maxBodyBytes int64 = 256 * 1024
 
@@ -40,11 +42,18 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		)
 	}
 
-	m.HandleFunc(types.RouteCreateUser, defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteCreateUser, defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.CreateUserResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -56,16 +65,23 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			return
 		}
 
-		rsp, statusCode = business.CreateUser(r.Context(), db, argon2IdOpts, v, allowedSubjectSuffix, req)
+		rsp, statusCode = business.CreateUser(r.Context(), m, db, argon2IdOpts, v, allowedSubjectSuffix, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteListUsers, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteListUsers, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.ListUsersResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -77,16 +93,23 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			return
 		}
 
-		rsp, statusCode = business.ListUsers(r.Context(), db, v, req)
+		rsp, statusCode = business.ListUsers(r.Context(), m, db, v, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteDeleteUser, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteDeleteUser, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.DeleteUserResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -103,16 +126,23 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			statusCode = http.StatusUnprocessableEntity
 		}
 
-		rsp, statusCode = business.DeleteUser(r.Context(), db, v, req)
+		rsp, statusCode = business.DeleteUser(r.Context(), m, db, v, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteAuthenticate, sensitiveMiddleware(defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteAuthenticate, sensitiveMiddleware(defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.AuthenticateResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -124,7 +154,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			return
 		}
 
-		rsp, statusCode = business.Authenticate(r.Context(), db, v, hmacSecret, req)
+		rsp, statusCode = business.Authenticate(r.Context(), m, db, v, hmacSecret, req)
 
 		return
 	})))
@@ -136,7 +166,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 
 	logger.Infof("listening on %v\n", addr)
 
-	err = http.Serve(l, m)
+	err = http.Serve(l, mux)
 	if err != nil {
 		return
 	}

@@ -3,6 +3,8 @@ package persistence
 import (
 	"context"
 	"fmt"
+	"github.com/armon/go-metrics"
+	"strconv"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -74,7 +76,7 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 	return
 }
 
-func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error) {
+func InsertUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, u types.UserModel) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -86,6 +88,9 @@ func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error)
 		} else {
 			l.Debug()
 		}
+
+		m.IncrCounterWithLabels([]string{"persistence", "InsertUser"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
+		m.MeasureSince([]string{"persistence", "InsertUser"}, begin)
 	}(time.Now())
 
 	_, err = db.NamedExecContext(ctx, "INSERT INTO users (email, password, fullname, role) VALUES (:email, :password, :fullname, :role)", &u)
@@ -98,7 +103,7 @@ func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error)
 	return
 }
 
-func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.UserModel, err error) {
+func SelectUsersOrderByIdDesc(ctx context.Context, m *metrics.Metrics, db *sqlx.DB) (us []types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -107,9 +112,13 @@ func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.User
 
 		if err != nil {
 			l.Warn(err)
+			m.IncrCounter([]string{"persistence", "SelectUsersOrderByIdDesc", "error"}, 1)
 		} else {
 			l.Debug()
 		}
+
+		m.IncrCounterWithLabels([]string{"persistence", "SelectUsersOrderByIdDesc"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
+		m.MeasureSince([]string{"persistence", "SelectUsersOrderByIdDesc"}, begin)
 	}(time.Now())
 
 	err = db.SelectContext(ctx, &us, "SELECT id, email, fullname FROM users ORDER BY id DESC")
@@ -122,7 +131,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.User
 	return
 }
 
-func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserModel, err error) {
+func GetUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e string) (u types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -134,6 +143,9 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserMod
 		} else {
 			l.Debug()
 		}
+
+		m.IncrCounterWithLabels([]string{"persistence", "GetUserByEmail"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
+		m.MeasureSince([]string{"persistence", "GetUserByEmail"}, begin)
 	}(time.Now())
 
 	err = db.GetContext(ctx, &u, "SELECT id, email, fullname, role, password FROM users WHERE email=$1", e)
@@ -146,7 +158,7 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserMod
 	return
 }
 
-func DeleteUserByEmail(ctx context.Context, db *sqlx.DB, e string) (err error) {
+func DeleteUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e string) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -157,6 +169,9 @@ func DeleteUserByEmail(ctx context.Context, db *sqlx.DB, e string) (err error) {
 		} else {
 			l.Debug()
 		}
+
+		m.IncrCounterWithLabels([]string{"persistence", "DeleteUserByEmail"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
+		m.MeasureSince([]string{"persistence", "DeleteUserByEmail"}, begin)
 	}(time.Now())
 
 	_, err = db.ExecContext(ctx, "DELETE FROM users WHERE email=$1", e)

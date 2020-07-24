@@ -3,6 +3,7 @@ package business
 import (
 	"context"
 	"fmt"
+	"github.com/armon/go-metrics"
 	"net/http"
 	"strings"
 	"time"
@@ -15,7 +16,7 @@ import (
 	"github.com/ppwfx/user-svc/pkg/utils"
 )
 
-func CreateUser(ctx context.Context, db *sqlx.DB, argonOpts Argon2IdOpts, v *validator.Validate, allowedSubjectSuffix string, req types.CreateUserRequest) (rsp types.CreateUserResponse, statusCode int) {
+func CreateUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, argonOpts Argon2IdOpts, v *validator.Validate, allowedSubjectSuffix string, req types.CreateUserRequest) (rsp types.CreateUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -59,7 +60,7 @@ func CreateUser(ctx context.Context, db *sqlx.DB, argonOpts Argon2IdOpts, v *val
 		role = types.RoleUser
 	}
 
-	err = persistence.InsertUser(ctx, db, types.UserModel{
+	err = persistence.InsertUser(ctx, m, db, types.UserModel{
 		Email:    req.Email,
 		Password: string(hashSecret(salt, req.Password, argonOpts)),
 		FullName: req.FullName,
@@ -77,7 +78,7 @@ func CreateUser(ctx context.Context, db *sqlx.DB, argonOpts Argon2IdOpts, v *val
 	return
 }
 
-func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req types.ListUsersRequest) (rsp types.ListUsersResponse, statusCode int) {
+func ListUsers(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, req types.ListUsersRequest) (rsp types.ListUsersResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -106,7 +107,7 @@ func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req type
 		return
 	}
 
-	us, err := persistence.SelectUsersOrderByIdDesc(ctx, db)
+	us, err := persistence.SelectUsersOrderByIdDesc(ctx, m, db)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get users from database")
 
@@ -127,7 +128,7 @@ func ListUsers(ctx context.Context, db *sqlx.DB, v *validator.Validate, req type
 	return
 }
 
-func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req types.DeleteUserRequest) (rsp types.DeleteUserResponse, statusCode int) {
+func DeleteUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, req types.DeleteUserRequest) (rsp types.DeleteUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -155,7 +156,7 @@ func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req typ
 		return
 	}
 
-	_, err = persistence.GetUserByEmail(ctx, db, req.Email)
+	_, err = persistence.GetUserByEmail(ctx, m, db, req.Email)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get user")
 
@@ -165,7 +166,7 @@ func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req typ
 		return
 	}
 
-	err = persistence.DeleteUserByEmail(ctx, db, req.Email)
+	err = persistence.DeleteUserByEmail(ctx, m, db, req.Email)
 	if err != nil {
 		err = errors.Wrap(err, "failed to delete user")
 
@@ -178,7 +179,7 @@ func DeleteUser(ctx context.Context, db *sqlx.DB, v *validator.Validate, req typ
 	return
 }
 
-func Authenticate(ctx context.Context, db *sqlx.DB, v *validator.Validate, hmacSecret string, req types.AuthenticateRequest) (rsp types.AuthenticateResponse, statusCode int) {
+func Authenticate(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, hmacSecret string, req types.AuthenticateRequest) (rsp types.AuthenticateResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -206,7 +207,7 @@ func Authenticate(ctx context.Context, db *sqlx.DB, v *validator.Validate, hmacS
 		return
 	}
 
-	u, err := persistence.GetUserByEmail(ctx, db, req.Email)
+	u, err := persistence.GetUserByEmail(ctx, m, db, req.Email)
 	if err != nil {
 		err = errors.Wrap(err, "failed to get user from database")
 
