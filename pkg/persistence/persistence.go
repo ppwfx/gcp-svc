@@ -2,12 +2,14 @@ package persistence
 
 import (
 	"context"
-	"github.com/ppwfx/user-svc/pkg/utils"
+	"fmt"
 	"time"
 
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/types"
+	"github.com/ppwfx/user-svc/pkg/utils"
 )
 
 func OpenPostgresDB(maxOpen int, maxIdle int, maxLifetime time.Duration, connection string) (db *sqlx.DB, err error) {
@@ -46,9 +48,7 @@ func ConnectToPostgresDb(ctx context.Context, db *sqlx.DB, timeout time.Duration
 func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "Migrate",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
@@ -66,6 +66,8 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 		fullname VARCHAR(256) NOT NULL
 	)`)
 	if err != nil {
+		err = errors.Wrap(err, "failed to migrate database")
+
 		return
 	}
 
@@ -75,9 +77,7 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "InsertUser",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"user_role", u.Role,
 		)
 
@@ -90,6 +90,8 @@ func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error)
 
 	_, err = db.NamedExecContext(ctx, "INSERT INTO users (email, password, fullname, role) VALUES (:email, :password, :fullname, :role)", &u)
 	if err != nil {
+		err = errors.Wrap(err, "failed to insert user")
+
 		return
 	}
 
@@ -99,9 +101,7 @@ func InsertUser(ctx context.Context, db *sqlx.DB, u types.UserModel) (err error)
 func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "SelectUsersOrderByIdDesc",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"returned_users_count", len(us),
 		)
 
@@ -114,6 +114,8 @@ func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.User
 
 	err = db.SelectContext(ctx, &us, "SELECT id, email, fullname FROM users ORDER BY id DESC")
 	if err != nil {
+		err = errors.Wrap(err, "failed to select users")
+
 		return
 	}
 
@@ -123,9 +125,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, db *sqlx.DB) (us []types.User
 func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "GetUserByEmail",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"returned_user_id", u.ID,
 		)
 
@@ -138,6 +138,8 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserMod
 
 	err = db.GetContext(ctx, &u, "SELECT id, email, fullname, role, password FROM users WHERE email=$1", e)
 	if err != nil {
+		err = errors.Wrap(err, "failed to select user by email")
+
 		return
 	}
 
@@ -147,9 +149,7 @@ func GetUserByEmail(ctx context.Context, db *sqlx.DB, e string) (u types.UserMod
 func DeleteUserByEmail(ctx context.Context, db *sqlx.DB, e string) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
-			types.LogTook, time.Since(begin).String(),
-			types.LogSec, time.Since(begin).Seconds(),
-			types.LogFunc, "DeleteUserByEmail",
+			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
@@ -161,6 +161,8 @@ func DeleteUserByEmail(ctx context.Context, db *sqlx.DB, e string) (err error) {
 
 	_, err = db.ExecContext(ctx, "DELETE FROM users WHERE email=$1", e)
 	if err != nil {
+		err = errors.Wrap(err, "failed to delete user by email")
+
 		return
 	}
 
