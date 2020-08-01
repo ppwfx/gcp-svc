@@ -23,8 +23,6 @@ func NewProductionMetrics(ctx context.Context, projectID string, svcName string)
 		Location:  "us-east1-c",
 	})
 
-	cfg := metrics.DefaultConfig(svcName)
-	cfg.EnableHostname = false
 	_, err = metrics.NewGlobal(metrics.DefaultConfig(svcName), s)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create metrics instance")
