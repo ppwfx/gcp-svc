@@ -44,7 +44,7 @@ func main() {
 			}
 		}()
 
-		c, m, err := utils.NewProductionMetrics(ctx, "user-svc")
+		c, m, err := utils.NewProductionMetrics(ctx, "user-svc", "user-svc")
 		defer func() {
 			err := c.Close()
 			if err != nil {

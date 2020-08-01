@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"time"
 
 	monitoring "cloud.google.com/go/monitoring/apiv3"
 	"github.com/armon/go-metrics"
@@ -9,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewProductionMetrics(ctx context.Context, projectID string) (c *monitoring.MetricClient, m *metrics.Metrics, err error) {
+func NewProductionMetrics(ctx context.Context, projectID string, svcName string) (c *monitoring.MetricClient, s metrics.MetricSink, err error) {
 	c, err = monitoring.NewMetricClient(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create metric client")
@@ -17,15 +18,27 @@ func NewProductionMetrics(ctx context.Context, projectID string) (c *monitoring.
 		return
 	}
 
-	ss := stackdriver.NewSink(c, &stackdriver.Config{
+	s = stackdriver.NewSink(c, &stackdriver.Config{
 		ProjectID: projectID,
 		Location:  "us-east1-c",
 	})
 
-	conf := metrics.DefaultConfig("go-metrics-stackdriver")
-	conf.EnableHostname = false
+	cfg := metrics.DefaultConfig(svcName)
+	cfg.EnableHostname = false
+	_, err = metrics.NewGlobal(metrics.DefaultConfig(svcName), s)
+	if err != nil {
+		err = errors.Wrap(err, "failed to create metrics instance")
 
-	m, err = metrics.New(conf, ss)
+		return
+	}
+
+	return
+}
+
+func NewDevelopmentMetrics() (s metrics.MetricSink, err error) {
+	s = metrics.NewInmemSink(10*time.Second, time.Minute)
+
+	_, err = metrics.NewGlobal(metrics.DefaultConfig("dev"), s)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create metrics instance")
 

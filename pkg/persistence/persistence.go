@@ -76,7 +76,7 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 	return
 }
 
-func InsertUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, u types.UserModel) (err error) {
+func InsertUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, u types.UserModel) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -90,7 +90,7 @@ func InsertUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, u types.Us
 		}
 
 		m.IncrCounterWithLabels([]string{"persistence", "InsertUser"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
-		m.MeasureSince([]string{"persistence", "InsertUser"}, begin)
+		m.AddSampleWithLabels([]string{"persistence", "InsertUser"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
 	_, err = db.NamedExecContext(ctx, "INSERT INTO users (email, password, fullname, role) VALUES (:email, :password, :fullname, :role)", &u)
@@ -103,7 +103,7 @@ func InsertUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, u types.Us
 	return
 }
 
-func SelectUsersOrderByIdDesc(ctx context.Context, m *metrics.Metrics, db *sqlx.DB) (us []types.UserModel, err error) {
+func SelectUsersOrderByIdDesc(ctx context.Context, m metrics.MetricSink, db *sqlx.DB) (us []types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -118,7 +118,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, m *metrics.Metrics, db *sqlx.
 		}
 
 		m.IncrCounterWithLabels([]string{"persistence", "SelectUsersOrderByIdDesc"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
-		m.MeasureSince([]string{"persistence", "SelectUsersOrderByIdDesc"}, begin)
+		m.AddSampleWithLabels([]string{"persistence", "SelectUsersOrderByIdDesc"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
 	err = db.SelectContext(ctx, &us, "SELECT id, email, fullname FROM users ORDER BY id DESC")
@@ -131,7 +131,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, m *metrics.Metrics, db *sqlx.
 	return
 }
 
-func GetUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e string) (u types.UserModel, err error) {
+func GetUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e string) (u types.UserModel, err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -145,7 +145,7 @@ func GetUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e stri
 		}
 
 		m.IncrCounterWithLabels([]string{"persistence", "GetUserByEmail"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
-		m.MeasureSince([]string{"persistence", "GetUserByEmail"}, begin)
+		m.AddSampleWithLabels([]string{"persistence", "GetUserByEmail"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
 	err = db.GetContext(ctx, &u, "SELECT id, email, fullname, role, password FROM users WHERE email=$1", e)
@@ -158,7 +158,7 @@ func GetUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e stri
 	return
 }
 
-func DeleteUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e string) (err error) {
+func DeleteUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e string) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -171,7 +171,7 @@ func DeleteUserByEmail(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, e s
 		}
 
 		m.IncrCounterWithLabels([]string{"persistence", "DeleteUserByEmail"}, 1, []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
-		m.MeasureSince([]string{"persistence", "DeleteUserByEmail"}, begin)
+		m.AddSampleWithLabels([]string{"persistence", "DeleteUserByEmail"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
 	_, err = db.ExecContext(ctx, "DELETE FROM users WHERE email=$1", e)

@@ -2,20 +2,23 @@ package communication
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/armon/go-metrics"
-	"github.com/pkg/errors"
-	"net"
-	"net/http"
-	"strings"
-
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
+	"github.com/ppwfx/user-svc/pkg/utils"
 	"go.uber.org/zap"
+	"net"
+	"net/http"
+	"net/http/pprof"
+	"strings"
+	"time"
 )
 
-func Serve(v *validator.Validate, logger *zap.SugaredLogger, m *metrics.Metrics, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
+func GetHandler(v *validator.Validate, logger *zap.SugaredLogger, m metrics.MetricSink, db *sqlx.DB, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) http.Handler {
 	mux := http.NewServeMux()
 
 	var maxBodyBytes int64 = 256 * 1024
@@ -86,7 +89,7 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, m *metrics.Metrics,
 		}()
 
 		var req types.ListUsersRequest
-		err = json.NewDecoder(r.Body).Decode(&req)
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			statusCode = http.StatusNotAcceptable
 
@@ -102,20 +105,25 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, m *metrics.Metrics,
 		var rsp types.DeleteUserResponse
 		var statusCode int
 
+		l := utils.GetContextLogger(r.Context())
+
 		defer func() {
 			err := r.Body.Close()
 			if err != nil {
 				err = errors.Wrap(err, "failed to close request body")
 
-				logger.Error(err)
+				l.Error(err)
 			}
 
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.DeleteUserRequest
-		err = json.NewDecoder(r.Body).Decode(&req)
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
+			err = errors.Wrapf(err, "failed to decode response")
+			l.Error(err)
+
 			statusCode = http.StatusNotAcceptable
 
 			return
@@ -159,14 +167,71 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, m *metrics.Metrics,
 		return
 	})))
 
+	return mux
+}
+
+func GetPprofHandler() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	return mux
+}
+
+func ServePprof(logger *zap.SugaredLogger, port string) (err error) {
+	h := GetPprofHandler()
+
+	addr := fmt.Sprintf("0.0.0.0:%v", port)
+
+	s := &http.Server{
+		Addr:              fmt.Sprintf(addr),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		Handler:           h,
+	}
+
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return
 	}
 
-	logger.Infof("listening on %v\n", addr)
+	logger.Infof("pprof listening on %v", addr)
 
-	err = http.Serve(l, mux)
+	err = s.Serve(l)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serve pprof")
+
+		return
+	}
+
+	return
+}
+
+func Serve(v *validator.Validate, logger *zap.SugaredLogger, m metrics.MetricSink, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
+	h := GetHandler(v, logger, m, db, hmacSecret, allowedSubjectSuffix, argon2IdOpts)
+
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return
+	}
+
+	s := &http.Server{
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		Handler:           h,
+	}
+
+	logger.Infof("service listening on %v", addr)
+
+	err = s.Serve(l)
 	if err != nil {
 		return
 	}

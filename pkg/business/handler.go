@@ -16,7 +16,7 @@ import (
 	"github.com/ppwfx/user-svc/pkg/utils"
 )
 
-func CreateUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, argonOpts Argon2IdOpts, v *validator.Validate, allowedSubjectSuffix string, req types.CreateUserRequest) (rsp types.CreateUserResponse, statusCode int) {
+func CreateUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, argonOpts Argon2IdOpts, v *validator.Validate, allowedSubjectSuffix string, req types.CreateUserRequest) (rsp types.CreateUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -78,7 +78,7 @@ func CreateUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, argonOpts 
 	return
 }
 
-func ListUsers(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, req types.ListUsersRequest) (rsp types.ListUsersResponse, statusCode int) {
+func ListUsers(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, req types.ListUsersRequest) (rsp types.ListUsersResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -128,7 +128,7 @@ func ListUsers(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validato
 	return
 }
 
-func DeleteUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, req types.DeleteUserRequest) (rsp types.DeleteUserResponse, statusCode int) {
+func DeleteUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, req types.DeleteUserRequest) (rsp types.DeleteUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
@@ -179,7 +179,7 @@ func DeleteUser(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validat
 	return
 }
 
-func Authenticate(ctx context.Context, m *metrics.Metrics, db *sqlx.DB, v *validator.Validate, hmacSecret string, req types.AuthenticateRequest) (rsp types.AuthenticateResponse, statusCode int) {
+func Authenticate(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, hmacSecret string, req types.AuthenticateRequest) (rsp types.AuthenticateResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
