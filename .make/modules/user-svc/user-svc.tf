@@ -10,26 +10,44 @@ variable "container_args" {
   type = list(string)
 }
 
+resource "random_string" "revision" {
+  length = 5
+  upper = false
+  special = false
+  keepers = {
+    always_run = "${timestamp()}"
+  }
+}
+
 resource "google_cloud_run_service" "user-svc" {
   name = "user-svc"
   location = "us-east1"
 
   template {
     metadata {
-      name = "user-svc-${replace(var.user-svc-version, ".", "-")}"
+      name = "user-svc-${random_string.revision.result}-${replace(var.user-svc-version, ".", "-")}"
       annotations = {
         "autoscaling.knative.dev/maxScale" = "10"
         "run.googleapis.com/client-name" = "terraform"
         "run.googleapis.com/cloudsql-instances" = var.postgresql_instance_connection_name
       }
+      labels = {
+        version = replace(var.user-svc-version, ".", "-")
+      }
     }
 
     spec {
+      container_concurrency = 4
       containers {
         image = "gcr.io/user-svc/user-svc:${var.user-svc-version}"
         command = [
           "./user-svc"]
         args = var.container_args
+        resources {
+          limits = {
+            memory = "400Mi"
+          }
+        }
       }
     }
   }
