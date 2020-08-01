@@ -45,6 +45,11 @@ func main() {
 		}()
 
 		c, m, err := utils.NewProductionMetrics(ctx, "user-svc", "user-svc")
+		if err != nil {
+			err = errors.Wrap(err, "failed to get metrics")
+
+			return
+		}
 		defer func() {
 			err := c.Close()
 			if err != nil {
