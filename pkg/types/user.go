@@ -1,5 +1,7 @@
 package types
 
+import "time"
+
 type CreateUserRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required"`
@@ -31,7 +33,7 @@ type ListUsersResponse struct {
 }
 
 type ListUser struct {
-	ID       int    `json:"id"`
+	ID       string `json:"id"`
 	Email    string `json:"email"`
 	FullName string `json:"fullname"`
 }
@@ -47,9 +49,11 @@ type AuthenticateResponse struct {
 }
 
 type UserModel struct {
-	ID       int    `db:"id"`
-	Email    string `db:"email"`
-	Password string `db:"password"`
-	FullName string `db:"fullname"`
-	Role     string `db:"role"`
+	ID        string    `db:"id"`
+	Email     string    `db:"email"`
+	Password  string    `db:"password"`
+	FullName  string    `db:"fullname"`
+	UserGroup string    `db:"user_group"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
