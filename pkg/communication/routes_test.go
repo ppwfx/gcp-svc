@@ -234,13 +234,13 @@ func TestCreateUser(t *testing.T) {
 						return
 					}
 
-					_, err := uuid.Parse(u.Email)
+					_, err := uuid.Parse(u.ID)
 					assert.NoError(t, err)
 					assert.Equal(t, tc.secondCreateReq.Email, u.Email)
 					assert.NotEqual(t, tc.secondCreateReq.Password, u.Password)
 					assert.Equal(t, tc.secondCreateReq.FullName, u.FullName)
 					diff := time.Now().Sub(u.CreatedAt)
-					assert.True(t, time.Duration(0) < diff && diff < time.Second, "expected difference to be between 0 and 1 second, actual: %v", diff)
+					assert.True(t, -time.Second < diff && diff < time.Second, "expected difference to be between -1 and 1 second, actual: %v", diff)
 				}
 
 				return
