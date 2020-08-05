@@ -45,19 +45,6 @@ module "user-svc" {
     "@test.com"]
 }
 
-resource "null_resource" "migrate_user-svc" {
-  triggers = {
-    always_run = "${timestamp()}"
-  }
-
-  provisioner "local-exec" {
-    environment = {
-      database = module.user-svc-postgres.connection_url
-    }
-    command = "migrate -source file://../pkg/persistence/migrations -database \"$database\" up"
-  }
-}
-
 output "user-svc-url" {
   value = module.user-svc.url
 }
