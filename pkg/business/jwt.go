@@ -36,12 +36,12 @@ func GetJwtClaims(hmacSecret string, accessToken string) (c map[string]interface
 	return
 }
 
-func GenerateAccessToken(hmacSecret string, role string, userID int) (t string, err error) {
+func GenerateAccessToken(hmacSecret string, group string, userID string) (t string, err error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		types.ClaimIat:  time.Now().Unix(),
-		types.ClaimExp:  time.Now().Add(24 * time.Hour).Unix(),
-		types.ClaimRole: role,
-		types.ClaimSub:  userID,
+		types.ClaimIat:       time.Now().Unix(),
+		types.ClaimExp:       time.Now().Add(24 * time.Hour).Unix(),
+		types.ClaimUserGroup: group,
+		types.ClaimSub:       userID,
 	})
 
 	t, err = token.SignedString([]byte(hmacSecret))
