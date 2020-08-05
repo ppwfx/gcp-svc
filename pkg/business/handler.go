@@ -53,18 +53,18 @@ func CreateUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, argonOpt
 		return
 	}
 
-	var role string
+	var group string
 	if strings.HasSuffix(req.Email, allowedSubjectSuffix) {
-		role = types.RoleAdmin
+		group = types.UserGroupAdmin
 	} else {
-		role = types.RoleUser
+		group = types.UserGroupUser
 	}
 
 	err = persistence.InsertUser(ctx, m, db, types.UserModel{
-		Email:    req.Email,
-		Password: string(hashSecret(salt, req.Password, argonOpts)),
-		FullName: req.FullName,
-		Role:     role,
+		Email:     req.Email,
+		Password:  string(hashSecret(salt, req.Password, argonOpts)),
+		FullName:  req.FullName,
+		UserGroup: group,
 	})
 	if err != nil {
 		err = errors.Wrap(err, "failed to insert user into database")
@@ -235,7 +235,7 @@ func Authenticate(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *val
 		return
 	}
 
-	accessToken, err := GenerateAccessToken(hmacSecret, u.Role, u.ID)
+	accessToken, err := GenerateAccessToken(hmacSecret, u.UserGroup, u.ID)
 	if err != nil {
 		err = errors.Wrap(err, "failed to generate access token")
 
