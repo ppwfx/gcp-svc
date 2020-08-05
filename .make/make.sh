@@ -5,7 +5,17 @@ set -eox pipefail
 TAG=$(git describe --exact-match --tags $(git log -n1 --pretty='%h') 2>/dev/null || echo "dev")
 
 function build-docker {
+    REV=$(git rev-parse HEAD)
+    DATE=$(date "+%Y-%m-%d")
+    VERSION=${TAG//v}
+
     docker build -f .make/user-svc.Dockerfile \
+        --label=org.opencontainers.image.created=$DATE \
+        --label=org.opencontainers.image.name=gcp-svc/user-svc \
+        --label=org.opencontainers.image.revision=$REV \
+        --label=org.opencontainers.image.version=$TAG \
+        --label=org.opencontainers.image.source=https://github.com/ppwfx/gcp-svc \
+        --label=repository=http://github.com/ppwfx/gcp-svc \
         --tag user-svc/user-svc:$TAG \
         --tag gcr.io/user-svc/user-svc:$TAG .
 }
