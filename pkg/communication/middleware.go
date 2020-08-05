@@ -35,7 +35,7 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 
 		l = l.With(
 			types.LogUser, claims[types.ClaimSub],
-			types.LogRole, claims[types.ClaimRole],
+			types.LogRole, claims[types.ClaimUserGroup],
 		)
 
 		r = r.WithContext(utils.WithContextLogger(r.Context(), l))
@@ -52,15 +52,15 @@ func authorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		c, ok := r.Context().Value(types.ContextKeyClaims).(map[string]interface{})
 		if ok {
-			r, ok := c[types.ClaimRole].(string)
+			r, ok := c[types.ClaimUserGroup].(string)
 			if !ok {
 				panic("abc")
 			}
 
 			switch r {
-			case types.RoleAdmin:
+			case types.UserGroupAdmin:
 				scopes = types.RoleAdminScopes
-			case types.RoleUser:
+			case types.UserGroupUser:
 				scopes = types.RoleUserScopes
 			}
 		} else {
