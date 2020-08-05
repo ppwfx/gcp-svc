@@ -2,6 +2,7 @@
 
 ### todo
 
+- handle signal
 - add version to binaries
 - terraform state encryption
 - general gcp setup

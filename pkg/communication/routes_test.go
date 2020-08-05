@@ -5,6 +5,7 @@ package communication
 import (
 	"context"
 	"flag"
+	"github.com/armon/go-metrics"
 	"log"
 	"net/http"
 	"os"
@@ -31,6 +32,7 @@ var ctx = context.Background()
 var c = &http.Client{}
 var userSvcAddr string
 var dbConnection string
+var s metrics.MetricSink
 var prefix = time.Now().Format("2006-01-02T15-04-05")
 
 func TestMain(m *testing.M) {
@@ -89,8 +91,15 @@ func TestMain(m *testing.M) {
 
 			v := validator.New()
 
+			s, err = utils.NewDevelopmentMetrics()
+			if err != nil {
+				err = errors.Wrap(err, "failed to get development metrics")
+
+				return
+			}
+
 			go func() {
-				err = Serve(v, l, db, "0.0.0.0:30080", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
+				err := Serve(v, l, s, db, "0.0.0.0:30080", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
 				if err != nil {
 					err = errors.Wrapf(err, "user-svc failed to listen")
 					log.Fatal(err)
@@ -219,7 +228,7 @@ func TestCreateUser(t *testing.T) {
 
 				if dbConnection != "" && !tc.expectError {
 					var u types.UserModel
-					u, err = persistence.GetUserByEmail(ctx, db, tc.secondCreateReq.Email)
+					u, err = persistence.GetUserByEmail(ctx, s, db, tc.secondCreateReq.Email)
 					if err != nil {
 						return
 					}
@@ -495,7 +504,7 @@ func TestDeleteUser(t *testing.T) {
 				if dbConnection != "" {
 					var u types.UserModel
 					if tc.expectError {
-						u, err = persistence.GetUserByEmail(ctx, db, tc.deleteReq.Email)
+						u, err = persistence.GetUserByEmail(ctx, s, db, tc.deleteReq.Email)
 						if err != nil {
 							return
 						}
@@ -503,7 +512,7 @@ func TestDeleteUser(t *testing.T) {
 						assert.Equal(t, tc.deleteReq.Email, u.Email)
 					} else {
 						var u types.UserModel
-						u, err = persistence.GetUserByEmail(ctx, db, tc.deleteReq.Email)
+						u, err = persistence.GetUserByEmail(ctx, s, db, tc.deleteReq.Email)
 
 						assert.Error(t, err)
 						err = nil

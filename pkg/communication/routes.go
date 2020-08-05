@@ -2,19 +2,24 @@ package communication
 
 import (
 	"encoding/json"
-	"net"
-	"net/http"
-	"strings"
-
+	"fmt"
+	"github.com/armon/go-metrics"
 	"github.com/go-playground/validator/v10"
 	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
+	"github.com/ppwfx/user-svc/pkg/utils"
 	"go.uber.org/zap"
+	"net"
+	"net/http"
+	"net/http/pprof"
+	"strings"
+	"time"
 )
 
-func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
-	m := http.NewServeMux()
+func GetHandler(v *validator.Validate, logger *zap.SugaredLogger, m metrics.MetricSink, db *sqlx.DB, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) http.Handler {
+	mux := http.NewServeMux()
 
 	var maxBodyBytes int64 = 256 * 1024
 
@@ -40,11 +45,18 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 		)
 	}
 
-	m.HandleFunc(types.RouteCreateUser, defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteCreateUser, defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.CreateUserResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -56,43 +68,62 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			return
 		}
 
-		rsp, statusCode = business.CreateUser(r.Context(), db, argon2IdOpts, v, allowedSubjectSuffix, req)
+		rsp, statusCode = business.CreateUser(r.Context(), m, db, argon2IdOpts, v, allowedSubjectSuffix, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteListUsers, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteListUsers, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.ListUsersResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.ListUsersRequest
-		err = json.NewDecoder(r.Body).Decode(&req)
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			statusCode = http.StatusNotAcceptable
 
 			return
 		}
 
-		rsp, statusCode = business.ListUsers(r.Context(), db, v, req)
+		rsp, statusCode = business.ListUsers(r.Context(), m, db, v, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteDeleteUser, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteDeleteUser, authMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.DeleteUserResponse
 		var statusCode int
 
+		l := utils.GetContextLogger(r.Context())
+
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				l.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
 		var req types.DeleteUserRequest
-		err = json.NewDecoder(r.Body).Decode(&req)
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
+			err = errors.Wrapf(err, "failed to decode response")
+			l.Error(err)
+
 			statusCode = http.StatusNotAcceptable
 
 			return
@@ -103,16 +134,23 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			statusCode = http.StatusUnprocessableEntity
 		}
 
-		rsp, statusCode = business.DeleteUser(r.Context(), db, v, req)
+		rsp, statusCode = business.DeleteUser(r.Context(), m, db, v, req)
 
 		return
 	}))
 
-	m.HandleFunc(types.RouteAuthenticate, sensitiveMiddleware(defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc(types.RouteAuthenticate, sensitiveMiddleware(defaultMiddleware(func(w http.ResponseWriter, r *http.Request) {
 		var rsp types.AuthenticateResponse
 		var statusCode int
 
 		defer func() {
+			err := r.Body.Close()
+			if err != nil {
+				err = errors.Wrap(err, "failed to close request body")
+
+				logger.Error(err)
+			}
+
 			writeJsonResponse(logger, w, statusCode, rsp)
 		}()
 
@@ -124,19 +162,76 @@ func Serve(v *validator.Validate, logger *zap.SugaredLogger, db *sqlx.DB, addr s
 			return
 		}
 
-		rsp, statusCode = business.Authenticate(r.Context(), db, v, hmacSecret, req)
+		rsp, statusCode = business.Authenticate(r.Context(), m, db, v, hmacSecret, req)
 
 		return
 	})))
+
+	return mux
+}
+
+func GetPprofHandler() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+
+	return mux
+}
+
+func ServePprof(logger *zap.SugaredLogger, port string) (err error) {
+	h := GetPprofHandler()
+
+	addr := fmt.Sprintf("0.0.0.0:%v", port)
+
+	s := &http.Server{
+		Addr:              fmt.Sprintf(addr),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		Handler:           h,
+	}
 
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return
 	}
 
-	logger.Infof("listening on %v\n", addr)
+	logger.Infof("pprof listening on %v", addr)
 
-	err = http.Serve(l, m)
+	err = s.Serve(l)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serve pprof")
+
+		return
+	}
+
+	return
+}
+
+func Serve(v *validator.Validate, logger *zap.SugaredLogger, m metrics.MetricSink, db *sqlx.DB, addr string, hmacSecret string, allowedSubjectSuffix string, argon2IdOpts business.Argon2IdOpts) (err error) {
+	h := GetHandler(v, logger, m, db, hmacSecret, allowedSubjectSuffix, argon2IdOpts)
+
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return
+	}
+
+	s := &http.Server{
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		IdleTimeout:       30 * time.Second,
+		Handler:           h,
+	}
+
+	logger.Infof("service listening on %v", addr)
+
+	err = s.Serve(l)
 	if err != nil {
 		return
 	}
