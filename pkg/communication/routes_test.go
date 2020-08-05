@@ -5,7 +5,6 @@ package communication
 import (
 	"context"
 	"flag"
-	"github.com/armon/go-metrics"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armon/go-metrics"
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
@@ -31,21 +32,21 @@ var db *sqlx.DB
 var ctx = context.Background()
 var c = &http.Client{}
 var userSvcAddr string
-var dbConnection string
+var pgUrl string
 var s metrics.MetricSink
 var prefix = time.Now().Format("2006-01-02T15-04-05")
 
 func TestMain(m *testing.M) {
 	flag.BoolVar(&args.Remote, "remote", false, "")
 	flag.StringVar(&args.UserSvcAddr, "user-svc-addr", "", "")
-	flag.StringVar(&args.DbConnection, "db-connection", "", "")
+	flag.StringVar(&args.PostgresUrl, "postgres-url", "", "")
 	flag.Parse()
 
 	if args.Remote {
 		userSvcAddr = args.UserSvcAddr
-		dbConnection = args.DbConnection
+		pgUrl = args.PostgresUrl
 	} else {
-		dbConnection = "host=localhost port=5432 user=user password=password dbname=user-svc sslmode=disable"
+		pgUrl = "postgres://user:password@localhost:5432/user-svc?sslmode=disable"
 		userSvcAddr = "http://localhost:30080"
 	}
 
@@ -68,7 +69,7 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			db, err = persistence.OpenPostgresDB(25, 25, 5*time.Minute, dbConnection)
+			db, err = persistence.OpenPostgresDB(25, 25, 5*time.Minute, pgUrl)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to open postgres")
 
@@ -82,7 +83,7 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			err = persistence.Migrate(ctx, db)
+			err = persistence.Migrate(ctx, "file://../persistence/migrations", pgUrl)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to migrate postgres")
 
@@ -226,16 +227,20 @@ func TestCreateUser(t *testing.T) {
 					assert.Empty(t, createRsp.Error)
 				}
 
-				if dbConnection != "" && !tc.expectError {
+				if pgUrl != "" && !tc.expectError {
 					var u types.UserModel
 					u, err = persistence.GetUserByEmail(ctx, s, db, tc.secondCreateReq.Email)
 					if err != nil {
 						return
 					}
 
+					_, err := uuid.Parse(u.Email)
+					assert.NoError(t, err)
 					assert.Equal(t, tc.secondCreateReq.Email, u.Email)
 					assert.NotEqual(t, tc.secondCreateReq.Password, u.Password)
 					assert.Equal(t, tc.secondCreateReq.FullName, u.FullName)
+					diff := time.Now().Sub(u.CreatedAt)
+					assert.True(t, time.Duration(0) < diff && diff < time.Second, "expected difference to be between 0 and 1 second, actual: %v", diff)
 				}
 
 				return
@@ -501,7 +506,7 @@ func TestDeleteUser(t *testing.T) {
 
 				assert.Equal(t, tc.expectedStatusCode, httpRsp.StatusCode)
 
-				if dbConnection != "" {
+				if pgUrl != "" {
 					var u types.UserModel
 					if tc.expectError {
 						u, err = persistence.GetUserByEmail(ctx, s, db, tc.deleteReq.Email)
