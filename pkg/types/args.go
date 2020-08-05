@@ -1,9 +1,9 @@
 package types
 
 type IntegrationTestArgs struct {
-	UserSvcAddr  string
-	DbConnection string
-	Remote       bool
+	UserSvcAddr string
+	PostgresUrl string
+	Remote      bool
 }
 
 type ServeArgs struct {
