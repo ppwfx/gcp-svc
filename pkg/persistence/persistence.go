@@ -3,10 +3,13 @@ package persistence
 import (
 	"context"
 	"fmt"
-	"github.com/armon/go-metrics"
 	"strconv"
 	"time"
 
+	"github.com/armon/go-metrics"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
@@ -47,7 +50,7 @@ func ConnectToPostgresDb(ctx context.Context, db *sqlx.DB, timeout time.Duration
 	return
 }
 
-func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
+func Migrate(ctx context.Context, sourceUrl string, pgUrl string) (err error) {
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
@@ -60,15 +63,15 @@ func Migrate(ctx context.Context, db *sqlx.DB) (err error) {
 		}
 	}(time.Now())
 
-	_, err = db.ExecContext(ctx, `CREATE TABLE users (
-		id SERIAL PRIMARY KEY,
-		email VARCHAR(256) UNIQUE NOT NULL,
-		password VARCHAR(256) NOT NULL,
-		role VARCHAR(256) NOT NULL,
-		fullname VARCHAR(256) NOT NULL
-	)`)
+	m, err := migrate.New(sourceUrl, pgUrl)
 	if err != nil {
-		err = errors.Wrap(err, "failed to migrate database")
+		err = errors.Wrap(err, "failed to create *migrate.Migrate instance")
+
+		return
+	}
+	err = m.Up()
+	if err != nil {
+		err = errors.Wrap(err, "failed to apply migration")
 
 		return
 	}
@@ -80,7 +83,7 @@ func InsertUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, u types.
 	defer func(begin time.Time) {
 		l := utils.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
-			"user_role", u.Role,
+			"user_group", u.UserGroup,
 		)
 
 		if err != nil {
@@ -93,7 +96,7 @@ func InsertUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, u types.
 		m.AddSampleWithLabels([]string{"persistence", "InsertUser"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
-	_, err = db.NamedExecContext(ctx, "INSERT INTO users (email, password, fullname, role) VALUES (:email, :password, :fullname, :role)", &u)
+	_, err = db.NamedExecContext(ctx, "INSERT INTO users (email, password, fullname, user_group) VALUES (:email, :password, :fullname, :user_group)", &u)
 	if err != nil {
 		err = errors.Wrap(err, "failed to insert user")
 
@@ -148,7 +151,7 @@ func GetUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e st
 		m.AddSampleWithLabels([]string{"persistence", "GetUserByEmail"}, float32(time.Now().Sub(begin).Milliseconds()), []metrics.Label{{Name: "success", Value: strconv.FormatBool(err == nil)}})
 	}(time.Now())
 
-	err = db.GetContext(ctx, &u, "SELECT id, email, fullname, role, password FROM users WHERE email=$1", e)
+	err = db.GetContext(ctx, &u, "SELECT id, email, fullname, user_group, password, created_at, updated_at FROM users WHERE email=$1", e)
 	if err != nil {
 		err = errors.Wrap(err, "failed to select user by email")
 
