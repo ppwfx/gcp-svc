@@ -7,6 +7,7 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
@@ -30,10 +31,10 @@ import (
 var args = types.IntegrationTestArgs{}
 var db *sqlx.DB
 var ctx = context.Background()
-var c = &http.Client{}
+var httpClient *http.Client
 var userSvcAddr string
 var pgUrl string
-var s metrics.MetricSink
+var metricSink metrics.MetricSink
 var prefix = time.Now().Format("2006-01-02T15-04-05")
 
 func TestMain(m *testing.M) {
@@ -47,12 +48,11 @@ func TestMain(m *testing.M) {
 		pgUrl = args.PostgresUrl
 	} else {
 		pgUrl = "postgres://user:password@localhost:5432/user-svc?sslmode=disable"
-		userSvcAddr = "http://localhost:30080"
 	}
 
-	l := zap.NewNop().Sugar()
+	logger := zap.NewNop().Sugar()
 
-	ctx = utils.WithContextLogger(ctx, l)
+	ctx = utils.WithContextLogger(ctx, logger)
 
 	err := func() (err error) {
 		if !args.Remote {
@@ -90,9 +90,9 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			v := validator.New()
+			validate := validator.New()
 
-			s, err = utils.NewDevelopmentMetrics()
+			metricSink, err = utils.NewDevelopmentMetricSink()
 			if err != nil {
 				err = errors.Wrap(err, "failed to get development metrics")
 
@@ -100,11 +100,13 @@ func TestMain(m *testing.M) {
 			}
 
 			go func() {
-				err := Serve(v, l, s, db, "0.0.0.0:30080", "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
-				if err != nil {
-					err = errors.Wrapf(err, "user-svc failed to listen")
-					log.Fatal(err)
-				}
+				mux := http.NewServeMux()
+				mux = AddSvcRoutes(mux, validate, logger, metricSink, db, "hmac-secret", "@test.com", business.DefaultArgon2IdOpts)
+
+				testServer := httptest.NewServer(mux)
+				httpClient = testServer.Client()
+
+				userSvcAddr = testServer.URL
 			}()
 		}
 
@@ -212,9 +214,9 @@ func TestCreateUser(t *testing.T) {
 			t.Parallel()
 
 			err := func() (err error) {
-				_, _, _ = client.CreateUser(ctx, c, userSvcAddr, tc.firstCreateReq)
+				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.firstCreateReq)
 
-				httpRsp, createRsp, err := client.CreateUser(ctx, c, userSvcAddr, tc.secondCreateReq)
+				httpRsp, createRsp, err := client.CreateUser(ctx, httpClient, userSvcAddr, tc.secondCreateReq)
 				if err != nil {
 					return
 				}
@@ -229,7 +231,7 @@ func TestCreateUser(t *testing.T) {
 
 				if pgUrl != "" && !tc.expectError {
 					var u types.UserModel
-					u, err = persistence.GetUserByEmail(ctx, s, db, tc.secondCreateReq.Email)
+					u, err = persistence.GetUserByEmail(ctx, metricSink, db, tc.secondCreateReq.Email)
 					if err != nil {
 						return
 					}
@@ -327,9 +329,9 @@ func TestAuthenticate(t *testing.T) {
 			t.Parallel()
 
 			err := func() (err error) {
-				_, _, _ = client.CreateUser(ctx, c, userSvcAddr, tc.createReq)
+				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.createReq)
 
-				httpRsp, authRsp, err := client.Authenticate(ctx, c, userSvcAddr, tc.authReq)
+				httpRsp, authRsp, err := client.Authenticate(ctx, httpClient, userSvcAddr, tc.authReq)
 				if err != nil {
 					return
 				}
@@ -400,11 +402,11 @@ func TestListUsers(t *testing.T) {
 			t.Parallel()
 
 			err := func() (err error) {
-				_, _, _ = client.CreateUser(ctx, c, userSvcAddr, tc.createReq)
+				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.createReq)
 
-				_, authRsp, _ := client.Authenticate(ctx, c, userSvcAddr, tc.authReq)
+				_, authRsp, _ := client.Authenticate(ctx, httpClient, userSvcAddr, tc.authReq)
 
-				httpRsp, listRsp, err := client.ListUsers(ctx, c, userSvcAddr, authRsp.AccessToken, types.ListUsersRequest{})
+				httpRsp, listRsp, err := client.ListUsers(ctx, httpClient, userSvcAddr, authRsp.AccessToken, types.ListUsersRequest{})
 				if err != nil {
 					return
 				}
@@ -493,13 +495,13 @@ func TestDeleteUser(t *testing.T) {
 			t.Parallel()
 
 			err := func() (err error) {
-				_, _, _ = client.CreateUser(ctx, c, userSvcAddr, tc.firstCreateReq)
+				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.firstCreateReq)
 
-				_, _, _ = client.CreateUser(ctx, c, userSvcAddr, tc.secondCreateReq)
+				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.secondCreateReq)
 
-				_, authRsp, _ := client.Authenticate(ctx, c, userSvcAddr, tc.authReq)
+				_, authRsp, _ := client.Authenticate(ctx, httpClient, userSvcAddr, tc.authReq)
 
-				httpRsp, deleteRsp, err := client.DeleteUser(ctx, c, userSvcAddr, authRsp.AccessToken, tc.deleteReq)
+				httpRsp, deleteRsp, err := client.DeleteUser(ctx, httpClient, userSvcAddr, authRsp.AccessToken, tc.deleteReq)
 				if err != nil {
 					return
 				}
@@ -509,7 +511,7 @@ func TestDeleteUser(t *testing.T) {
 				if pgUrl != "" {
 					var u types.UserModel
 					if tc.expectError {
-						u, err = persistence.GetUserByEmail(ctx, s, db, tc.deleteReq.Email)
+						u, err = persistence.GetUserByEmail(ctx, metricSink, db, tc.deleteReq.Email)
 						if err != nil {
 							return
 						}
@@ -517,7 +519,7 @@ func TestDeleteUser(t *testing.T) {
 						assert.Equal(t, tc.deleteReq.Email, u.Email)
 					} else {
 						var u types.UserModel
-						u, err = persistence.GetUserByEmail(ctx, s, db, tc.deleteReq.Email)
+						u, err = persistence.GetUserByEmail(ctx, metricSink, db, tc.deleteReq.Email)
 
 						assert.Error(t, err)
 						err = nil
