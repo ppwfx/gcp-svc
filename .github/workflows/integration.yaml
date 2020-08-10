@@ -2,7 +2,7 @@ name: integration
 on:
   push:
 jobs:
-  release:
+  lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -16,5 +16,17 @@ jobs:
           echo "::add-path::${{ github.workspace }}/bin"
       - run: curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh
       - run: make lint
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v1
+        with:
+          go-version: "1.13"
       - run: make test
+      - run: make build-docker
+  build-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
       - run: make build-docker
