@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
 	"go.uber.org/zap"
 	"net/http"
 	"strings"
@@ -19,7 +19,7 @@ func handleDeleteUser(validator *validator.Validate, logger *zap.SugaredLogger, 
 		var rsp types.DeleteUserResponse
 		var statusCode int
 
-		l := utils.GetContextLogger(r.Context())
+		l := ctxutil.GetContextLogger(r.Context())
 
 		defer func() {
 			err := r.Body.Close()

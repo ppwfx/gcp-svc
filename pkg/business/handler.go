@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/armon/go-metrics"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
 	"net/http"
 	"strings"
 	"time"
@@ -13,13 +14,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
 )
 
 func CreateUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, argonOpts Argon2IdOpts, v *validator.Validate, allowedSubjectSuffix string, req types.CreateUserRequest) (rsp types.CreateUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
@@ -81,7 +81,7 @@ func CreateUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, argonOpt
 func ListUsers(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, req types.ListUsersRequest) (rsp types.ListUsersResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"rsp_users_count", len(rsp.Users),
 		)
@@ -131,7 +131,7 @@ func ListUsers(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *valida
 func DeleteUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, req types.DeleteUserRequest) (rsp types.DeleteUserResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
@@ -182,7 +182,7 @@ func DeleteUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *valid
 func Authenticate(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, v *validator.Validate, hmacSecret string, req types.AuthenticateRequest) (rsp types.AuthenticateResponse, statusCode int) {
 	var err error
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
