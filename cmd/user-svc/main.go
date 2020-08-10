@@ -4,6 +4,8 @@ import (
 	"context"
 	"flag"
 	"log"
+	"net"
+	"net/http"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -27,14 +29,14 @@ func main() {
 	ctx := context.Background()
 
 	err := func() (err error) {
-		l, err := utils.NewProductionLogger("user-svc", "dev")
+		logger, err := utils.NewProductionLogger("user-svc", "dev")
 		if err != nil {
 			err = errors.Wrap(err, "failed to create logger")
 
 			return
 		}
 		defer func() {
-			err := l.Sync()
+			err := logger.Sync()
 			if err != nil {
 				err = errors.Wrap(err, "failed to flush logger buffer")
 
@@ -44,14 +46,14 @@ func main() {
 			}
 		}()
 
-		c, m, err := utils.NewProductionMetrics(ctx, "user-svc", "user-svc")
+		monitoringClient, metrics, err := utils.NewProductionMetricSink(ctx, "user-svc", "user-svc")
 		if err != nil {
 			err = errors.Wrap(err, "failed to get metrics")
 
 			return
 		}
 		defer func() {
-			err := c.Close()
+			err := monitoringClient.Close()
 			if err != nil {
 				err = errors.Wrap(err, "failed to close monitoring client")
 
@@ -75,11 +77,31 @@ func main() {
 			return
 		}
 
-		v := validator.New()
+		validate := validator.New()
 
-		err = communication.Serve(v, l, m, db, args.Addr, args.HmacSecret, args.AllowedSubjectSuffix, business.DefaultArgon2IdOpts)
+		mux := http.NewServeMux()
+		mux = communication.AddSvcRoutes(mux, validate, logger, metrics, db, args.HmacSecret, args.AllowedSubjectSuffix, business.DefaultArgon2IdOpts)
+
+		l, err := net.Listen("tcp", args.Addr)
 		if err != nil {
-			err = errors.Wrap(err, "failed to listen")
+			err = errors.Wrapf(err, "failed to listen on %v", args.Addr)
+
+			return
+		}
+
+		s := &http.Server{
+			ReadHeaderTimeout: 5 * time.Second,
+			WriteTimeout:      5 * time.Second,
+			ReadTimeout:       5 * time.Second,
+			IdleTimeout:       30 * time.Second,
+			Handler:           mux,
+		}
+
+		logger.Infof("service listening on %v", args.Addr)
+
+		err = s.Serve(l)
+		if err != nil {
+			err = errors.Wrapf(err, "failed to serve")
 
 			return
 		}
