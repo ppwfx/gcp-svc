@@ -14,7 +14,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
 )
 
 func OpenPostgresDB(maxOpen int, maxIdle int, maxLifetime time.Duration, connection string) (db *sqlx.DB, err error) {
@@ -52,7 +52,7 @@ func ConnectToPostgresDb(ctx context.Context, db *sqlx.DB, timeout time.Duration
 
 func Migrate(ctx context.Context, sourceUrl string, pgUrl string) (err error) {
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
@@ -81,7 +81,7 @@ func Migrate(ctx context.Context, sourceUrl string, pgUrl string) (err error) {
 
 func InsertUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, u types.UserModel) (err error) {
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"user_group", u.UserGroup,
 		)
@@ -108,7 +108,7 @@ func InsertUser(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, u types.
 
 func SelectUsersOrderByIdDesc(ctx context.Context, m metrics.MetricSink, db *sqlx.DB) (us []types.UserModel, err error) {
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"returned_users_count", len(us),
 		)
@@ -136,7 +136,7 @@ func SelectUsersOrderByIdDesc(ctx context.Context, m metrics.MetricSink, db *sql
 
 func GetUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e string) (u types.UserModel, err error) {
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 			"returned_user_id", u.ID,
 		)
@@ -163,7 +163,7 @@ func GetUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e st
 
 func DeleteUserByEmail(ctx context.Context, m metrics.MetricSink, db *sqlx.DB, e string) (err error) {
 	defer func(begin time.Time) {
-		l := utils.GetContextLogger(ctx).With(
+		l := ctxutil.GetContextLogger(ctx).With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 

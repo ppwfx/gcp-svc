@@ -14,7 +14,8 @@ import (
 	"github.com/ppwfx/user-svc/pkg/communication"
 	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
+	"github.com/ppwfx/user-svc/pkg/utils/loggingutil"
+	"github.com/ppwfx/user-svc/pkg/utils/metricsutil"
 )
 
 var args = types.ServeArgs{}
@@ -29,7 +30,7 @@ func main() {
 	ctx := context.Background()
 
 	err := func() (err error) {
-		logger, err := utils.NewProductionLogger("user-svc", "dev")
+		logger, err := loggingutil.NewProductionLogger("user-svc", "dev")
 		if err != nil {
 			err = errors.Wrap(err, "failed to create logger")
 
@@ -46,7 +47,7 @@ func main() {
 			}
 		}()
 
-		monitoringClient, metrics, err := utils.NewProductionMetricSink(ctx, "user-svc", "user-svc")
+		monitoringClient, metrics, err := metricsutil.NewProductionMetricSink(ctx, "user-svc", "user-svc")
 		if err != nil {
 			err = errors.Wrap(err, "failed to get metrics")
 

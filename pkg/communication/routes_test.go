@@ -5,6 +5,9 @@ package communication
 import (
 	"context"
 	"flag"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
+	"github.com/ppwfx/user-svc/pkg/utils/dockerutil"
+	"github.com/ppwfx/user-svc/pkg/utils/metricsutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -23,7 +26,6 @@ import (
 	"github.com/ppwfx/user-svc/pkg/communication/client"
 	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 )
@@ -52,11 +54,11 @@ func TestMain(m *testing.M) {
 
 	logger := zap.NewNop().Sugar()
 
-	ctx = utils.WithContextLogger(ctx, logger)
+	ctx = ctxutil.WithContextLogger(ctx, logger)
 
 	err := func() (err error) {
 		if !args.Remote {
-			err = utils.RemoveDockerContainers("user-svc-communication")
+			err = dockerutil.RemoveDockerContainers("user-svc-communication")
 			if err != nil {
 				return
 			}
@@ -92,7 +94,7 @@ func TestMain(m *testing.M) {
 
 			validate := validator.New()
 
-			metricSink, err = utils.NewDevelopmentMetricSink()
+			metricSink, err = metricsutil.NewDevelopmentMetricSink()
 			if err != nil {
 				err = errors.Wrap(err, "failed to get development metrics")
 
@@ -119,7 +121,7 @@ func TestMain(m *testing.M) {
 	c := m.Run()
 
 	if !args.Remote {
-		err = utils.RemoveDockerContainers("user-svc-communication")
+		err = dockerutil.RemoveDockerContainers("user-svc-communication")
 		if err != nil {
 			err = errors.Wrapf(err, "failed to remove docker containers")
 

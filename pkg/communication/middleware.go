@@ -10,7 +10,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/ppwfx/user-svc/pkg/utils"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
+	"github.com/ppwfx/user-svc/pkg/utils/loggingutil"
 	"go.uber.org/zap"
 )
 
@@ -18,13 +19,13 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		t := extractAccessToken(r)
 
-		l := utils.GetContextLogger(r.Context())
+		l := ctxutil.GetContextLogger(r.Context())
 
 		claims, err := business.GetJwtClaims(hmacSecret, t)
 		if err != nil {
 			err = errors.Wrapf(err, "failed to authenticate user: failed to get jwt claims from jwt token: %s", t)
 
-			utils.GetContextLogger(r.Context()).Warn(err)
+			ctxutil.GetContextLogger(r.Context()).Warn(err)
 
 			writeJsonResponse(l, w, http.StatusUnauthorized, types.ErrorResponse{
 				Error: types.ErrorUnauthorized,
@@ -38,7 +39,7 @@ func composeAuthMiddleware(hmacSecret string, next http.HandlerFunc) http.Handle
 			types.LogRole, claims[types.ClaimUserGroup],
 		)
 
-		r = r.WithContext(utils.WithContextLogger(r.Context(), l))
+		r = r.WithContext(ctxutil.WithContextLogger(r.Context(), l))
 
 		r = r.WithContext(context.WithValue(r.Context(), types.ContextKeyClaims, claims))
 
@@ -78,7 +79,7 @@ func authorizationMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		// TODO
 		//log.Println(err)
 
-		l := utils.GetContextLogger(r.Context())
+		l := ctxutil.GetContextLogger(r.Context())
 
 		writeJsonResponse(l, w, http.StatusForbidden, types.ErrorResponse{
 			Error: types.ErrorUnauthorized,
@@ -136,13 +137,13 @@ func composeContextLoggerMiddleware(l *zap.SugaredLogger, next http.HandlerFunc)
 			types.LogId, uuid.New().String(),
 		)
 
-		r = r.WithContext(utils.WithContextLogger(r.Context(), l))
+		r = r.WithContext(ctxutil.WithContextLogger(r.Context(), l))
 
 		begin := time.Now()
 
 		next(iw, r)
 
-		l.With(zap.Object(types.LogHttpRequest, &utils.LogHttpRequest{
+		l.With(zap.Object(types.LogHttpRequest, &loggingutil.LogHttpRequest{
 			Method:             r.Method,
 			URL:                r.URL.String(),
 			UserAgent:          r.UserAgent(),
