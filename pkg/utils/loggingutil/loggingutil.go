@@ -121,7 +121,7 @@ func (c *core) Write(entry zapcore.Entry, fields []zapcore.Field) error {
 	return c.Core.Write(entry, fields)
 }
 
-func NewProductionLogger(service string, version string) (sl *zap.SugaredLogger, err error) {
+func NewStackDriverLogger(service string, version string) (sl *zap.SugaredLogger, err error) {
 	c := &zap.Config{
 		Level:             zap.NewAtomicLevelAt(zapcore.InfoLevel),
 		Encoding:          "json",

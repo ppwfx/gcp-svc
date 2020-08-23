@@ -1,0 +1,17 @@
+version: "3.8"
+services:
+  user-svc:
+    build:
+      context: ../.
+      dockerfile: .make/user-svc.Dockerfile
+    command: ["./user-svc", "--hmac-secret", "hmac-secret", "--port", "8080", "--allowed-subject-suffix", "@test.com", "--postgres-url", "postgres://user:password@postgres:5432/user-svc?sslmode=disable", "--migrate", "file:///gcp-svc/pkg/persistence/migrations"]
+    volumes:
+      - ../.:/gcp-svc
+    ports:
+      - 30800:8080
+  postgres:
+    image: postgres
+    environment:
+      POSTGRES_DB: user-svc
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password

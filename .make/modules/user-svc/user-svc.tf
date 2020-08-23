@@ -40,8 +40,7 @@ resource "google_cloud_run_service" "user-svc" {
       container_concurrency = 4
       containers {
         image = "gcr.io/user-svc/user-svc:${var.user-svc-version}"
-        command = [
-          "./user-svc"]
+        command = ["./user-svc"]
         args = var.container_args
         resources {
           limits = {

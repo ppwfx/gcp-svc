@@ -26,11 +26,17 @@ function push-docker {
     docker push gcr.io/user-svc/user-svc:$TAG
 }
 
-function migrate-database {
+function docker-compose-user-svc {
+    docker-compose -f .make/docker-compose.yml up --build --remove-orphans --renew-anon-volumes
+}
+
+function test-integration-remote {
+    go test ./pkg/communication -tags=integration -remote -user-svc-addr https://$(cd .make && terraform output -json | jq -r '.["user-svc-url"]["value"]')
+}
+
+function apply-terraform {
     cd ./.make
-    terraform init
-    terraform plan -target=null_resource.migrate_user-svc
-    terraform apply -target=null_resource.migrate_user-svc -auto-approve
+    terraform apply -auto-approve -var user-svc-version=$TAG
 }
 
 function deploy {
