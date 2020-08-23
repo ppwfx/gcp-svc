@@ -1,5 +1,7 @@
 FROM golang:1.13.3
 WORKDIR /go/src/github.com/ppwfx/user-svc/
+COPY go.* ./
+RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o /dist/user-svc cmd/user-svc/main.go
 

@@ -5,9 +5,6 @@ package communication
 import (
 	"context"
 	"flag"
-	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
-	"github.com/ppwfx/user-svc/pkg/utils/dockerutil"
-	"github.com/ppwfx/user-svc/pkg/utils/metricsutil"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -22,12 +19,16 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+
 	"github.com/ppwfx/user-svc/pkg/business"
 	"github.com/ppwfx/user-svc/pkg/communication/client"
 	"github.com/ppwfx/user-svc/pkg/persistence"
 	"github.com/ppwfx/user-svc/pkg/types"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
+	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
+	"github.com/ppwfx/user-svc/pkg/utils/dockerutil"
+	"github.com/ppwfx/user-svc/pkg/utils/metricsutil"
 )
 
 var args = types.IntegrationTestArgs{}
@@ -48,6 +49,7 @@ func TestMain(m *testing.M) {
 	if args.Remote {
 		userSvcAddr = args.UserSvcAddr
 		pgUrl = args.PostgresUrl
+		httpClient = &http.Client{}
 	} else {
 		pgUrl = "postgres://user:password@localhost:5432/user-svc?sslmode=disable"
 	}
@@ -85,7 +87,7 @@ func TestMain(m *testing.M) {
 				return
 			}
 
-			err = persistence.Migrate(ctx, "file://../persistence/migrations", pgUrl)
+			err = persistence.Migrate(logger, "file://../persistence/migrations", pgUrl)
 			if err != nil {
 				err = errors.Wrapf(err, "failed to migrate postgres")
 
@@ -94,7 +96,7 @@ func TestMain(m *testing.M) {
 
 			validate := validator.New()
 
-			metricSink, err = metricsutil.NewDevelopmentMetricSink()
+			metricSink, err = metricsutil.NewInMemoryMetricSink()
 			if err != nil {
 				err = errors.Wrap(err, "failed to get development metrics")
 
@@ -357,6 +359,14 @@ func TestAuthenticate(t *testing.T) {
 	}
 }
 
+type testListUsersTestCase struct {
+	name               string
+	createReq          types.CreateUserRequest
+	authReq            types.AuthenticateRequest
+	expectError        bool
+	expectedStatusCode int
+}
+
 func TestListUsers(t *testing.T) {
 	t.Parallel()
 
@@ -398,38 +408,40 @@ func TestListUsers(t *testing.T) {
 	}
 
 	for _, tc := range tcs {
-		tc := tc
-
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			err := func() (err error) {
-				_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.createReq)
-
-				_, authRsp, _ := client.Authenticate(ctx, httpClient, userSvcAddr, tc.authReq)
-
-				httpRsp, listRsp, err := client.ListUsers(ctx, httpClient, userSvcAddr, authRsp.AccessToken, types.ListUsersRequest{})
-				if err != nil {
-					return
-				}
-
-				assert.Equal(t, tc.expectedStatusCode, httpRsp.StatusCode)
-
-				if tc.expectError {
-					assert.NotEmpty(t, listRsp.Error)
-					assert.Len(t, listRsp.Users, 0)
-				} else {
-					assert.Empty(t, listRsp.Error)
-					assert.NotEmpty(t, listRsp.Users)
-				}
-
-				return
-			}()
-			if err != nil {
-				t.Error(err)
-			}
-		})
+		testListUsers(t, tc)
 	}
+}
+
+func testListUsers(t *testing.T, tc testListUsersTestCase) {
+	t.Run(tc.name, func(t *testing.T) {
+		t.Parallel()
+
+		err := func() (err error) {
+			_, _, _ = client.CreateUser(ctx, httpClient, userSvcAddr, tc.createReq)
+
+			_, authRsp, _ := client.Authenticate(ctx, httpClient, userSvcAddr, tc.authReq)
+
+			httpRsp, listRsp, err := client.ListUsers(ctx, httpClient, userSvcAddr, authRsp.AccessToken, types.ListUsersRequest{})
+			if err != nil {
+				return
+			}
+
+			assert.Equal(t, tc.expectedStatusCode, httpRsp.StatusCode)
+
+			if tc.expectError {
+				assert.NotEmpty(t, listRsp.Error)
+				assert.Len(t, listRsp.Users, 0)
+			} else {
+				assert.Empty(t, listRsp.Error)
+				assert.NotEmpty(t, listRsp.Users)
+			}
+
+			return
+		}()
+		if err != nil {
+			t.Error(err)
+		}
+	})
 }
 
 func TestDeleteUser(t *testing.T) {

@@ -13,6 +13,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"github.com/pkg/errors"
+	"go.uber.org/zap"
+
 	"github.com/ppwfx/user-svc/pkg/types"
 	"github.com/ppwfx/user-svc/pkg/utils/ctxutil"
 )
@@ -50,14 +52,14 @@ func ConnectToPostgresDb(ctx context.Context, db *sqlx.DB, timeout time.Duration
 	return
 }
 
-func Migrate(ctx context.Context, sourceUrl string, pgUrl string) (err error) {
+func Migrate(logger *zap.SugaredLogger, sourceUrl string, pgUrl string) (err error) {
 	defer func(begin time.Time) {
-		l := ctxutil.GetContextLogger(ctx).With(
+		l := logger.With(
 			types.LogLatency, fmt.Sprintf("%.6fs", time.Since(begin).Seconds()),
 		)
 
 		if err != nil {
-			l.Warn(err)
+			l.Error(err)
 		} else {
 			l.Debug()
 		}

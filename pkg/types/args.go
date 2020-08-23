@@ -7,8 +7,18 @@ type IntegrationTestArgs struct {
 }
 
 type ServeArgs struct {
-	DbConnection         string
-	Addr                 string
-	HmacSecret           string
-	AllowedSubjectSuffix string
+	PostgresUrl            string
+	Port                   string
+	HmacSecret             string
+	AllowedSubjectSuffix   string
+	Metrics                string
+	Logging                string
+	Migrate                string
+	ExposePprof            bool
+	HttpReadTimeoutSeconds int
 }
+
+const (
+	MetricsStackDriver = "stackdriver"
+	LoggingStackDriver = "stackdriver"
+)

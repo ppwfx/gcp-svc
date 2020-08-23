@@ -16,5 +16,8 @@ push-docker:
 migrate-database:
 	@${SOURCE_MAKE} && migrate-database
 
+docker-compose-user-svc:
+	@${SOURCE_MAKE} && docker-compose-user-svc
+
 deploy:
 	@${SOURCE_MAKE} && deploy

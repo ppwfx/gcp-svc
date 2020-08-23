@@ -10,7 +10,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func NewProductionMetricSink(ctx context.Context, projectID string, svcName string) (c *monitoring.MetricClient, s metrics.MetricSink, err error) {
+func NewStackDriverMetricSink(ctx context.Context, projectID string, svcName string) (c *monitoring.MetricClient, s metrics.MetricSink, err error) {
 	c, err = monitoring.NewMetricClient(ctx)
 	if err != nil {
 		err = errors.Wrap(err, "failed to create metric client")
@@ -33,7 +33,7 @@ func NewProductionMetricSink(ctx context.Context, projectID string, svcName stri
 	return
 }
 
-func NewDevelopmentMetricSink() (s metrics.MetricSink, err error) {
+func NewInMemoryMetricSink() (s metrics.MetricSink, err error) {
 	s = metrics.NewInmemSink(10*time.Second, time.Minute)
 
 	_, err = metrics.NewGlobal(metrics.DefaultConfig("dev"), s)
